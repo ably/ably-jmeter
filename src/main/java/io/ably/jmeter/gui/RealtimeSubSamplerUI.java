@@ -26,6 +26,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 	private final JLabeledTextField sampleConditionValue = new JLabeledTextField("");
 	private final JLabeledTextField channelName = new JLabeledTextField("Channel name:");
 	private JCheckBox debugResponse = new JCheckBox("Debug response");
+	private JCheckBox timestamp = new JCheckBox("Payload includes timestamp");
 
 	public RealtimeSubSamplerUI() {
 		this.init();
@@ -51,6 +52,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		JPanel optsPanel1 = new HorizontalPanel();
 		optsPanel1.add(channelName);
 		channelName.setToolTipText("Channel to subscribe on");
+		optsPanel1.add(timestamp);
 		optsPanelCon.add(optsPanel1);
 		
 		JPanel optsPanel3 = new HorizontalPanel();
@@ -86,6 +88,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		RealtimeSubSampler sampler = (RealtimeSubSampler) element;
 
 		this.channelName.setText(sampler.getChannel());
+		this.timestamp.setSelected(sampler.isAddTimestamp());
 		this.debugResponse.setSelected(sampler.isDebugResponse());
 		this.sampleOnCondition.setText(sampler.getSampleCondition());
 
@@ -110,6 +113,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 	private void setupSamplerProperties(RealtimeSubSampler sampler) {
 		this.configureTestElement(sampler);
 		sampler.setChannel(this.channelName.getText());
+		sampler.setAddTimestamp(this.timestamp.isSelected());
 		sampler.setDebugResponse(this.debugResponse.isSelected());
 		sampler.setSampleCondition(this.sampleOnCondition.getText());
 		
@@ -124,6 +128,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 	public void clearGui() {
 		super.clearGui();
 		this.channelName.setText(DEFAULT_CHANNEL_NAME);
+		this.timestamp.setSelected(false);
 		this.debugResponse.setSelected(false);
 		this.sampleOnCondition.setText(SAMPLE_ON_CONDITION_OPTION1);
 		this.sampleConditionValue.setText(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);

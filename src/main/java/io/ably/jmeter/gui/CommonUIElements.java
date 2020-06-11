@@ -28,6 +28,7 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 	public final JLabeledTextField clientIdPrefix = new JLabeledTextField("ClientId:", 8);
 	private JCheckBox clientIdSuffix = new JCheckBox("Add random suffix for ClientId");
 	final JLabeledTextField channelName = new JLabeledTextField("Channel name:");
+	private JCheckBox timestamp = new JCheckBox("Add timestamp in payload");
 
 	JLabeledChoice messageTypes;
 	final JSyntaxTextArea sendMessage = JSyntaxTextArea.getInstance(10, 50);
@@ -76,6 +77,7 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		JPanel optsPanel = new HorizontalPanel();
 		optsPanel.add(channelName);
 		channelName.setToolTipText("Name of channel that the message will be sent to.");
+		optsPanel.add(timestamp);
 		optsPanelCon.add(optsPanel);
 
 		return optsPanelCon;
@@ -134,7 +136,8 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 	}
 
 	public void configurePublisher(AbstractAblySampler sampler) {
-		channelName.setText(sampler.getTopic());
+		channelName.setText(sampler.getChannel());
+		timestamp.setSelected(sampler.isAddTimestamp());
 		if(MESSAGE_TYPE_STRING.equalsIgnoreCase(sampler.getMessageType())) {
 			messageTypes.setSelectedIndex(0);
 			messagePanel.setVisible(true);
@@ -156,7 +159,8 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 	}
 
 	public void setupSamplerPublishProperties(AbstractAblySampler sampler) {
-		sampler.setTopic(channelName.getText());
+		sampler.setChannel(channelName.getText());
+		sampler.setAddTimestamp(timestamp.isSelected());
 		sampler.setMessageType(messageTypes.getText());
 		sampler.setMessageLength(stringLength.getText());
 		sampler.setMessage(sendMessage.getText());
@@ -171,6 +175,7 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 
 	public void clearPublishUI() {
 		channelName.setText(DEFAULT_CHANNEL_NAME);
+		timestamp.setSelected(false);
 		messageTypes.setSelectedIndex(0);
 		stringLength.setText(DEFAULT_MESSAGE_FIX_LENGTH);
 		sendMessage.setText("");

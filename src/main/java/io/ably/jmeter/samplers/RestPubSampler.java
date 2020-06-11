@@ -1,10 +1,12 @@
 package io.ably.jmeter.samplers;
 
+import com.google.gson.JsonPrimitive;
 import io.ably.jmeter.Util;
 import io.ably.lib.rest.AblyRest;
 import io.ably.lib.types.AblyException;
 import io.ably.lib.types.ClientOptions;
-import io.ably.lib.util.Log;
+import io.ably.lib.types.Message;
+import io.ably.lib.util.JsonUtils;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 
@@ -39,7 +41,6 @@ public class RestPubSampler extends AbstractAblySampler {
 			}
 			opts.key = getApiKey();
 			opts.clientId = clientId;
-			opts.logLevel = Log.VERBOSE;
 			client = new AblyRest(opts);
 		} catch (AblyException e) {
 			logger.log(Level.SEVERE, "Failed to init client " + clientId , e);
@@ -60,9 +61,16 @@ public class RestPubSampler extends AbstractAblySampler {
 				payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
 			}
 
-			String channelName = getTopic();
+			String channelName = getChannel();
+			Message msg = new Message("test event", payload);
+			if(isAddTimestamp()) {
+				msg.extras = JsonUtils.object()
+						.add("metadata", JsonUtils.object()
+								.add("timestamp", new JsonPrimitive(System.currentTimeMillis())))
+						.toJson();
+			}
 			result.sampleStart();
-			client.channels.get(channelName).publish("test event", payload);
+			client.channels.get(channelName).publish(new Message[]{msg});
 			result.sampleEnd();
 
 			result.setSuccessful(true);

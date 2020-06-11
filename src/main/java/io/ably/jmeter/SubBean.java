@@ -6,7 +6,8 @@ import java.util.List;
 public class SubBean {
 	private int receivedMessageSize = 0;
 	private int receivedCount = 0;
-	private double avgElapsedTime = 0f;
+	private int elapsedTimeCount = 0;
+	private double totalElapsedTime = 0f;
 
 	private List<byte[]> contents = new ArrayList<>();
 
@@ -25,10 +26,11 @@ public class SubBean {
 	}
 
 	public double getAvgElapsedTime() {
-		return avgElapsedTime;
+		return elapsedTimeCount == 0 ? 0 : totalElapsedTime / elapsedTimeCount;
 	}
-	public void setAvgElapsedTime(double avgElapsedTime) {
-		this.avgElapsedTime = avgElapsedTime;
+	public void incrementElapsedTime(double elapsedTime) {
+		totalElapsedTime += elapsedTime;
+		++elapsedTimeCount;
 	}
 
 	public List<byte[]> getContents() {

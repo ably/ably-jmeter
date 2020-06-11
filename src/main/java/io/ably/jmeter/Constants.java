@@ -10,6 +10,7 @@ public interface Constants {
 	String MESSAGE_FIX_LENGTH = "ably.message_type_fixed_length";
 	String MESSAGE_TO_BE_SENT = "ably.message_to_sent";
 	String CHANNEL_NAME = "ably.channel_name";
+	String ADD_TIMESTAMP = "ably.add_timestamp";
 	String SAMPLE_CONDITION_VALUE = "ably.sample_condition_value";
 	String SAMPLE_CONDITION = "ably.sample_condition";
 	String DEBUG_RESPONSE = "ably.debug_response";

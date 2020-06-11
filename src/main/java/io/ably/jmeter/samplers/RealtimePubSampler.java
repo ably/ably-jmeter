@@ -1,9 +1,12 @@
 package io.ably.jmeter.samplers;
 
+import com.google.gson.JsonPrimitive;
 import io.ably.jmeter.Util;
 import io.ably.lib.realtime.AblyRealtime;
 import io.ably.lib.realtime.CompletionListener;
 import io.ably.lib.types.ErrorInfo;
+import io.ably.lib.types.Message;
+import io.ably.lib.util.JsonUtils;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -41,7 +44,6 @@ public class RealtimePubSampler extends AbstractAblySampler {
 		}
 	}
 
-	private transient AblyRealtime client = null;
 	private Object payload = null;
 	private String channelName = "";
 
@@ -51,7 +53,7 @@ public class RealtimePubSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 	
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		client = (AblyRealtime) vars.getObject(AbstractAblySampler.CLIENT);
+		AblyRealtime client = (AblyRealtime) vars.getObject(AbstractAblySampler.CLIENT);
 		if (client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
@@ -72,14 +74,21 @@ public class RealtimePubSampler extends AbstractAblySampler {
 				payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
 			}
 
-			channelName = getTopic();
+			channelName = getChannel();
 			if (logger.isLoggable(Level.FINE)) {
 				logger.fine("pub [clientId]: " + clientId + ", [channel]: " + channelName + ", [payload]: " + Util.displayPayload(payload));
 			}
 
 			final PubResult pubOutcome = new PubResult();
+			Message msg = new Message("test event", payload);
+			if(isAddTimestamp()) {
+				msg.extras = JsonUtils.object()
+						.add("metadata", JsonUtils.object()
+							.add("timestamp", new JsonPrimitive(System.currentTimeMillis())))
+						.toJson();
+			}
 			result.sampleStart();
-			client.channels.get(channelName).publish("test event", payload, pubOutcome);
+			client.channels.get(channelName).publish(msg, pubOutcome);
 			ErrorInfo error = pubOutcome.waitForResult();
 			result.sampleEnd();
 

@@ -37,11 +37,18 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 		setProperty(CLIENT_ID_SUFFIX, clientIdSuffix);
 	}
 
-	public String getTopic() {
-		return getPropertyAsString(CHANNEL_NAME, DEFAULT_CHANNEL_NAME);
+	public String getChannel() {
+		return getPropertyAsString(Constants.CHANNEL_NAME, Constants.DEFAULT_CHANNEL_NAME);
 	}
-	public void setTopic(String topicName) {
-		setProperty(CHANNEL_NAME, topicName);
+	public void setChannel(String topicsName) {
+		setProperty(Constants.CHANNEL_NAME, topicsName);
+	}
+
+	public boolean isAddTimestamp() {
+		return getPropertyAsBoolean(ADD_TIMESTAMP);
+	}
+	public void setAddTimestamp(boolean addTimestamp) {
+		setProperty(ADD_TIMESTAMP, addTimestamp);
 	}
 
 	public String getMessageType() {

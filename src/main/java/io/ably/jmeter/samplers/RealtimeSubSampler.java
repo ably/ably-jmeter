@@ -1,5 +1,7 @@
 package io.ably.jmeter.samplers;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.SubBean;
 import io.ably.jmeter.Util;
@@ -9,6 +11,7 @@ import io.ably.lib.realtime.Channel.MessageListener;
 import io.ably.lib.realtime.CompletionListener;
 import io.ably.lib.types.AblyException;
 import io.ably.lib.types.ErrorInfo;
+import io.ably.lib.types.Message;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -54,15 +57,9 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	private int sampleCount = 1;
 
 	private transient ConcurrentLinkedQueue<SubBean> batches = new ConcurrentLinkedQueue<>();
+	private boolean printFlag = false;
 
 	private final transient Object dataLock = new Object();
-
-	public String getChannel() {
-		return getPropertyAsString(Constants.CHANNEL_NAME, Constants.DEFAULT_CHANNEL_NAME);
-	}
-	public void setChannel(String topicsName) {
-		setProperty(Constants.CHANNEL_NAME, topicsName);
-	}
 
 	public String getSampleCondition() {
 		return getPropertyAsString(Constants.SAMPLE_CONDITION, Constants.SAMPLE_ON_CONDITION_OPTION1);
@@ -166,7 +163,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		int receivedCount = bean.getReceivedCount();
 		String message = MessageFormat.format("Received {0} of message.", receivedCount);
 		byte[] content = isDebugResponse() ? bean.mergeContents("\n".getBytes()) : new byte[0];
-		fillOKResult(result, bean.getReceivedMessageSize(), message, content);
+		fillOKResult(result, bean.getReceivedMessageSize(), bean.getAvgElapsedTime(), message, content);
 		if (logger.isLoggable(Level.FINE)) {
 			logger.fine("sub [channel]: " + channelName + ", [payload]: " + new String(content));
 		}
@@ -211,11 +208,11 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		return message -> {
 			if(sampleByTime) {
 				synchronized (dataLock) {
-					handleSubBean(sampleByTime, message.data, sampleCount);
+					handleSubBean(sampleByTime, message, sampleCount);
 				}
 			} else {
 				synchronized (dataLock) {
-					SubBean bean = handleSubBean(sampleByTime, message.data, sampleCount);
+					SubBean bean = handleSubBean(sampleByTime, message, sampleCount);
 					if(bean.getReceivedCount() == sampleCount) {
 						dataLock.notify();
 					}
@@ -224,7 +221,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		};
 	}
 
-	private SubBean handleSubBean(boolean sampleByTime, Object payload, int sampleCount) {
+	private SubBean handleSubBean(boolean sampleByTime, Message msg, int sampleCount) {
 		SubBean bean = null;
 		if(batches.isEmpty()) {
 			bean = new SubBean();
@@ -240,10 +237,30 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			bean = new SubBean();
 			batches.add(bean);
 		}
-		if(isDebugResponse()) {
-			bean.getContents().add(Util.payloadBytes(payload));
+		if(isAddTimestamp()) {
+			long now = System.currentTimeMillis();
+			long msgTimestamp = 0;
+			JsonObject extras = msg.extras;
+			if(extras != null) {
+				JsonObject metadata = extras.getAsJsonObject("metadata");
+				if(metadata != null) {
+					JsonPrimitive jsonTimestamp = metadata.getAsJsonPrimitive("timestamp");
+					if(jsonTimestamp != null) {
+						msgTimestamp = jsonTimestamp.getAsLong();
+					}
+				}
+			}
+			if(msgTimestamp == 0 && (!printFlag)) {
+				logger.info(() -> "Payload does not include timestamp: " + msg);
+				printFlag = true;
+			} else {
+				bean.incrementElapsedTime(now - msgTimestamp);
+			}
 		}
-		bean.setReceivedMessageSize(bean.getReceivedMessageSize() + Util.payloadLength(payload));
+		if(isDebugResponse()) {
+			bean.getContents().add(Util.payloadBytes(msg.data));
+		}
+		bean.setReceivedMessageSize(bean.getReceivedMessageSize() + Util.payloadLength(msg.data));
 		bean.setReceivedCount(bean.getReceivedCount() + 1);
 		return bean;
 	}
@@ -270,12 +287,13 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		return result;
 	}
 
-	private void fillOKResult(SampleResult result, int size, String message, byte[] contents) {
+	private void fillOKResult(SampleResult result, int size, double latency, String message, byte[] contents) {
 		result.setResponseCode("200");
 		result.setSuccessful(true);
 		result.setResponseMessage(message);
 		result.setBodySize((long)size);
 		result.setBytes((long)size);
+		result.setLatency((long)latency);
 		result.setResponseData(contents);
 		result.sampleEnd();
 	}

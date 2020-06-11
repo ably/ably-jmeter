@@ -85,7 +85,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		super.configure(element);
 		RealtimeSubSampler sampler = (RealtimeSubSampler) element;
 
-		this.channelName.setText(sampler.getTopics());
+		this.channelName.setText(sampler.getChannel());
 		this.debugResponse.setSelected(sampler.isDebugResponse());
 		this.sampleOnCondition.setText(sampler.getSampleCondition());
 
@@ -109,7 +109,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 
 	private void setupSamplerProperties(RealtimeSubSampler sampler) {
 		this.configureTestElement(sampler);
-		sampler.setTopics(this.channelName.getText());
+		sampler.setChannel(this.channelName.getText());
 		sampler.setDebugResponse(this.debugResponse.isSelected());
 		sampler.setSampleCondition(this.sampleOnCondition.getText());
 		

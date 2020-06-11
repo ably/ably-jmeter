@@ -2,6 +2,8 @@ package io.ably.jmeter;
 
 import javax.xml.bind.DatatypeConverter;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 
 public class Util implements Constants {
@@ -32,6 +34,16 @@ public class Util implements Constants {
 
 	public static byte[] hexToBinary(String hex) {
 		return DatatypeConverter.parseHexBinary(hex);
+	}
+
+	public static byte[] payloadBytes(Object data) {
+		if(data instanceof String) {
+			return ((String)data).getBytes();
+		}
+		if(data instanceof byte[]) {
+			return (byte[])data;
+		}
+		return new byte[0];
 	}
 
 	public static String displayPayload(Object data) {

@@ -8,12 +8,11 @@ public class SubBean {
 	private int receivedCount = 0;
 	private double avgElapsedTime = 0f;
 
-	private List<String> contents = new ArrayList<String>();
+	private List<byte[]> contents = new ArrayList<>();
 
 	public int getReceivedMessageSize() {
 		return receivedMessageSize;
 	}
-
 	public void setReceivedMessageSize(int receivedMessageSize) {
 		this.receivedMessageSize = receivedMessageSize;
 	}
@@ -21,7 +20,6 @@ public class SubBean {
 	public int getReceivedCount() {
 		return receivedCount;
 	}
-
 	public void setReceivedCount(int receivedCount) {
 		this.receivedCount = receivedCount;
 	}
@@ -29,16 +27,32 @@ public class SubBean {
 	public double getAvgElapsedTime() {
 		return avgElapsedTime;
 	}
-
 	public void setAvgElapsedTime(double avgElapsedTime) {
 		this.avgElapsedTime = avgElapsedTime;
 	}
 
-	public List<String> getContents() {
+	public List<byte[]> getContents() {
 		return contents;
 	}
 
-	public void setContents(List<String> contents) {
-		this.contents = contents;
+	public byte[] mergeContents(byte[] delim) {
+		if(receivedCount == 0) {
+			return new byte[0];
+		}
+
+		int delimLength = delim.length;
+		int finalLength = receivedMessageSize + (receivedCount - 1) * delimLength;
+		byte[] dest = new byte[finalLength];
+		int destPos = 0;
+
+		for(byte[] element : contents) {
+			System.arraycopy(element, 0, dest, destPos, element.length);
+			destPos += element.length;
+			if(destPos < finalLength) {
+				System.arraycopy(delim, 0, dest, destPos, delimLength);
+				destPos += delimLength;
+			}
+		}
+		return dest;
 	}
 }

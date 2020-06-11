@@ -15,7 +15,6 @@ import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.JMeterVariables;
 
 import java.text.MessageFormat;
-import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
@@ -51,27 +50,23 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	private transient AblyRealtime connection = null;
 	private SubResult subResult;
 
-	private boolean sampleByTime = true; // initial values
-	private int sampleElapsedTime = 1000; 
+	private int sampleElapsedTime = 1000;
 	private int sampleCount = 1;
 
 	private transient ConcurrentLinkedQueue<SubBean> batches = new ConcurrentLinkedQueue<>();
-	private boolean printFlag = false;
 
-	private transient Object dataLock = new Object();
+	private final transient Object dataLock = new Object();
 
-	public String getTopics() {
+	public String getChannel() {
 		return getPropertyAsString(Constants.CHANNEL_NAME, Constants.DEFAULT_CHANNEL_NAME);
 	}
-
-	public void setTopics(String topicsName) {
+	public void setChannel(String topicsName) {
 		setProperty(Constants.CHANNEL_NAME, topicsName);
 	}
 
 	public String getSampleCondition() {
 		return getPropertyAsString(Constants.SAMPLE_CONDITION, Constants.SAMPLE_ON_CONDITION_OPTION1);
 	}
-
 	public void setSampleCondition(String option) {
 		setProperty(Constants.SAMPLE_CONDITION, option);
 	}
@@ -79,7 +74,6 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	public String getSampleCount() {
 		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_COUNT);
 	}
-
 	public void setSampleCount(String count) {
 		setProperty(Constants.SAMPLE_CONDITION_VALUE, count);
 	}
@@ -87,7 +81,6 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	public String getSampleElapsedTime() {
 		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
 	}
-
 	public void setSampleElapsedTime(String elapsedTime) {
 		setProperty(Constants.SAMPLE_CONDITION_VALUE, elapsedTime);
 	}
@@ -95,7 +88,6 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	public boolean isDebugResponse() {
 		return getPropertyAsBoolean(Constants.DEBUG_RESPONSE, false);
 	}
-
 	public void setDebugResponse(boolean debugResponse) {
 		setProperty(Constants.DEBUG_RESPONSE, debugResponse);
 	}
@@ -111,7 +103,8 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			return fillFailedResult(result, "500", "Subscribe failed because connection is not established.");
 		}
 
-		sampleByTime = Constants.SAMPLE_ON_CONDITION_OPTION1.equals(getSampleCondition());
+		// initial values
+		boolean sampleByTime = Constants.SAMPLE_ON_CONDITION_OPTION1.equals(getSampleCondition());
 		try {
 			if (sampleByTime) {
 				sampleElapsedTime = Integer.parseInt(getSampleElapsedTime());
@@ -128,7 +121,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			return fillFailedResult(result, "512", "Sample on message count: must be greater than 1.");
 		}
 
-		String channelName = getTopics();
+		String channelName = getChannel();
 		ErrorInfo subError = subscribe(channelName, sampleByTime, sampleCount);
 		if(subError != null) {
 			return fillFailedResult(result, String.valueOf(subError.statusCode), "Failed to subscribe to channel:" + channelName + "; error: " + subError.message);
@@ -171,17 +164,11 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			bean = new SubBean();
 		}
 		int receivedCount = bean.getReceivedCount();
-		List<String> contents = bean.getContents();
 		String message = MessageFormat.format("Received {0} of message.", receivedCount);
-		StringBuilder content = new StringBuilder();
-		if (isDebugResponse()) {
-			for(String s : contents) {
-				content.append(s).append("\n");
-			}
-		}
-		fillOKResult(result, bean.getReceivedMessageSize(), message, content.toString());
+		byte[] content = isDebugResponse() ? bean.mergeContents("\n".getBytes()) : new byte[0];
+		fillOKResult(result, bean.getReceivedMessageSize(), message, content);
 		if (logger.isLoggable(Level.FINE)) {
-			logger.fine("sub [channel]: " + channelName + ", [payload]: " + content.toString());
+			logger.fine("sub [channel]: " + channelName + ", [payload]: " + new String(content));
 		}
 
 		if(receivedCount == 0) {
@@ -253,8 +240,8 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			bean = new SubBean();
 			batches.add(bean);
 		}
-		if (isDebugResponse()) {
-			bean.getContents().add(Util.displayPayload(payload));
+		if(isDebugResponse()) {
+			bean.getContents().add(Util.payloadBytes(payload));
 		}
 		bean.setReceivedMessageSize(bean.getReceivedMessageSize() + Util.payloadLength(payload));
 		bean.setReceivedCount(bean.getReceivedCount() + 1);
@@ -283,13 +270,13 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		return result;
 	}
 
-	private void fillOKResult(SampleResult result, int size, String message, String contents) {
+	private void fillOKResult(SampleResult result, int size, String message, byte[] contents) {
 		result.setResponseCode("200");
 		result.setSuccessful(true);
 		result.setResponseMessage(message);
-		result.setBodySize(size);
-		result.setBytes(size);
-		result.setResponseData(contents.getBytes());
+		result.setBodySize((long)size);
+		result.setBytes((long)size);
+		result.setResponseData(contents);
 		result.sampleEnd();
 	}
 }

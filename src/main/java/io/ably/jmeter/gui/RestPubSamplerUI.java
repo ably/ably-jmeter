@@ -28,18 +28,15 @@ public class RestPubSamplerUI extends AbstractSamplerGui implements Constants {
 		JPanel mainPanel = new VerticalPanel();
 		add(mainPanel, BorderLayout.CENTER);
 
-		mainPanel.add(uiElements.createConnPanel());
-		mainPanel.add(uiElements.createAuthentication());
-		mainPanel.add(uiElements.createConnOptions());
 		mainPanel.add(uiElements.createPubOption());
-		mainPanel.add(uiElements.createPayload());
+		mainPanel.add(uiElements.createMessagePayload());
+		mainPanel.add(uiElements.createMessageAttributes());
 	}
 
 	@Override
 	public void configure(TestElement element) {
 		super.configure(element);
 		RestPubSampler sampler = (RestPubSampler)element;
-		uiElements.configureClient(sampler);
 		uiElements.configurePublisher(sampler);
 	}
 
@@ -47,7 +44,6 @@ public class RestPubSamplerUI extends AbstractSamplerGui implements Constants {
 	public TestElement createTestElement() {
 		RestPubSampler sampler = new RestPubSampler();
 		this.configureTestElement(sampler);
-		uiElements.setupSamplerClientProperties(sampler);
 		uiElements.setupSamplerPublishProperties(sampler);
 		return sampler;
 	}
@@ -66,14 +62,12 @@ public class RestPubSamplerUI extends AbstractSamplerGui implements Constants {
 	public void modifyTestElement(TestElement arg0) {
 		RestPubSampler sampler = (RestPubSampler)arg0;
 		this.configureTestElement(sampler);
-		uiElements.setupSamplerClientProperties(sampler);
 		uiElements.setupSamplerPublishProperties(sampler);
 	}
 
 	@Override
 	public void clearGui() {
 		super.clearGui();
-		uiElements.clearClientUI();
 		uiElements.clearPublishUI();
 	}
 }

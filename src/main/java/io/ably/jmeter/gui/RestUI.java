@@ -1,7 +1,7 @@
 package io.ably.jmeter.gui;
 
 import io.ably.jmeter.Constants;
-import io.ably.jmeter.samplers.ConnectSampler;
+import io.ably.jmeter.samplers.RestSampler;
 import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.samplers.gui.AbstractSamplerGui;
 import org.apache.jmeter.testelement.TestElement;
@@ -10,13 +10,13 @@ import javax.swing.*;
 import java.awt.*;
 
 /**
- * The GUI for the connect sampler
+ * The GUI for the REST configuration sampler
  */
-public class ConnectSamplerUI extends AbstractSamplerGui implements Constants {
+public class RestUI extends AbstractSamplerGui implements Constants {
 	private CommonUIElements uiElements = new CommonUIElements();
 	private static final long serialVersionUID = 1666890646673145131L;
 
-	public ConnectSamplerUI() {
+	public RestUI() {
 		this.init();
 	}
 
@@ -37,13 +37,13 @@ public class ConnectSamplerUI extends AbstractSamplerGui implements Constants {
 	@Override
 	public void configure(TestElement element) {
 		super.configure(element);
-		ConnectSampler sampler = (ConnectSampler)element;
+		RestSampler sampler = (RestSampler)element;
 		uiElements.configureClient(sampler);
 	}
 
 	@Override
 	public TestElement createTestElement() {
-		ConnectSampler sampler = new ConnectSampler();
+		RestSampler sampler = new RestSampler();
 		this.configureTestElement(sampler);
 		uiElements.setupSamplerClientProperties(sampler);
 		return sampler;
@@ -56,12 +56,12 @@ public class ConnectSamplerUI extends AbstractSamplerGui implements Constants {
 
 	@Override
 	public String getStaticLabel() {
-		return "Ably Connect";
+		return "Ably REST Configuration";
 	}
 
 	@Override
 	public void modifyTestElement(TestElement arg0) {
-		ConnectSampler sampler = (ConnectSampler)arg0;
+		RestSampler sampler = (RestSampler)arg0;
 		this.configureTestElement(sampler);
 		uiElements.setupSamplerClientProperties(sampler);
 	}
@@ -71,5 +71,4 @@ public class ConnectSamplerUI extends AbstractSamplerGui implements Constants {
 		super.clearGui();
 		uiElements.clearClientUI();
 	}
-
 }

@@ -5,12 +5,13 @@ import io.ably.jmeter.samplers.RealtimePubSampler;
 import org.apache.jmeter.gui.util.VerticalPanel;
 import org.apache.jmeter.samplers.gui.AbstractSamplerGui;
 import org.apache.jmeter.testelement.TestElement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.util.logging.Logger;
 
 /**
  * The GUI for the realtime publish sampler
@@ -18,7 +19,7 @@ import java.util.logging.Logger;
 public class RealtimePubSamplerUI extends AbstractSamplerGui implements Constants, ChangeListener {
 	private CommonUIElements uiElements = new CommonUIElements();
 	private static final long serialVersionUID = 2479085966683186422L;
-	private static final Logger logger = Logger.getLogger(RealtimePubSamplerUI.class.getCanonicalName());
+	private static final Logger logger = LoggerFactory.getLogger(RealtimePubSamplerUI.class.getCanonicalName());
 
 	public RealtimePubSamplerUI() {
 		init();
@@ -33,7 +34,8 @@ public class RealtimePubSamplerUI extends AbstractSamplerGui implements Constant
 		add(mainPanel, BorderLayout.CENTER);
 
 		mainPanel.add(uiElements.createPubOption());
-		mainPanel.add(uiElements.createPayload());
+		mainPanel.add(uiElements.createMessagePayload());
+		mainPanel.add(uiElements.createMessageAttributes());
 	}
 
 	@Override

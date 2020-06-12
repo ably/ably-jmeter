@@ -1,12 +1,16 @@
 package io.ably.jmeter.samplers;
 
 import io.ably.jmeter.Constants;
+import io.ably.jmeter.Util;
 import org.apache.jmeter.samplers.AbstractSampler;
+import org.apache.jmeter.testelement.ThreadListener;
+
+import java.util.Map;
 
 /**
  * A base model for properties used by multiple samplers
  */
-public abstract class AbstractAblySampler extends AbstractSampler implements Constants {
+public abstract class AbstractAblySampler extends AbstractSampler implements Constants, ThreadListener {
 	private static final long serialVersionUID = 7163793218595455807L;
 
 	public String getEnvironment() {
@@ -37,11 +41,26 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 		setProperty(CLIENT_ID_SUFFIX, clientIdSuffix);
 	}
 
-	public String getChannel() {
-		return getPropertyAsString(Constants.CHANNEL_NAME, Constants.DEFAULT_CHANNEL_NAME);
+	public String getChannelPrefix() {
+		return getPropertyAsString(Constants.CHANNEL_NAME_PREFIX, Constants.DEFAULT_CHANNEL_NAME_PREFIX);
 	}
-	public void setChannel(String topicsName) {
-		setProperty(Constants.CHANNEL_NAME, topicsName);
+	public void setChannelPrefix(String channelName) {
+		setProperty(Constants.CHANNEL_NAME_PREFIX, channelName);
+	}
+
+	public boolean isChannelNameSuffix() {
+		return getPropertyAsBoolean(CHANNEL_NAME_SUFFIX, DEFAULT_ADD_CHANNEL_NAME_SUFFIX);
+	}
+	public void setChannelNameSuffix(boolean channelNameSuffix) {
+		setProperty(CHANNEL_NAME_SUFFIX, channelNameSuffix);
+	}
+
+	public Map<String, String> getChannelParams() {
+		String encoded = getPropertyAsString(Constants.CHANNEL_PARAMS);
+		return Util.stringToMap(encoded);
+	}
+	public void setChannelParams(Map<String, String> params) {
+		setProperty(Constants.CHANNEL_PARAMS, Util.mapToString(params));
 	}
 
 	public boolean isAddTimestamp() {
@@ -71,4 +90,101 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 	public void setMessage(String message) {
 		setProperty(MESSAGE_TO_BE_SENT, message);
 	}
+
+	public String getMessageEventName() {
+		return getPropertyAsString(MESSAGE_EVENT_NAME, DEFAULT_EVENT_NAME);
+	}
+	public void setMessageEventName(String name) {
+		setProperty(MESSAGE_EVENT_NAME, name);
+	}
+
+	public String getMessageEncoding() {
+		return getPropertyAsString(MESSAGE_ENCODING, DEFAULT_ENCODING);
+	}
+	public void setMessageEncoding(String name) {
+		setProperty(MESSAGE_ENCODING, name);
+	}
+
+	public String getStatsStart() {
+		return getPropertyAsString(STATS_START, DEFAULT_STATS_START);
+	}
+	public void setStatsStart(String val) {
+		setProperty(STATS_START, val);
+	}
+
+	public String getStatsEnd() {
+		return getPropertyAsString(STATS_END, DEFAULT_STATS_END);
+	}
+	public void setStatsEnd(String val) {
+		setProperty(STATS_END, val);
+	}
+
+	public String getStatsLimit() {
+		return getPropertyAsString(STATS_LIMIT, DEFAULT_STATS_LIMIT);
+	}
+	public void setStatsLimit(String val) {
+		setProperty(STATS_LIMIT, val);
+	}
+
+	public String getHistoryStart() {
+		return getPropertyAsString(HISTORY_START, DEFAULT_HISTORY_START);
+	}
+	public void setHistoryStart(String val) {
+		setProperty(HISTORY_START, val);
+	}
+
+	public String getHistoryEnd() {
+		return getPropertyAsString(HISTORY_END, DEFAULT_HISTORY_END);
+	}
+	public void setHistoryEnd(String val) {
+		setProperty(HISTORY_END, val);
+	}
+
+	public String getHistoryLimit() {
+		return getPropertyAsString(HISTORY_LIMIT, DEFAULT_HISTORY_LIMIT);
+	}
+	public void setHistoryLimit(String val) {
+		setProperty(HISTORY_LIMIT, val);
+	}
+
+	public String[] getUnitValues() {
+		return UNITS.split(",");
+	}
+	public int getStatsUnitIndex() {
+		return getPropertyAsInt(STATS_UNIT, DEFAULT_UNIT);
+	}
+	public void setStatsUnitIndex(int idx) {
+		setProperty(STATS_UNIT, idx);
+	}
+
+	public String[] getDirectionValues() {
+		return DIRECTIONS.split(",");
+	}
+	public int getStatsDirectionIndex() {
+		return getPropertyAsInt(STATS_DIRECTION, DEFAULT_STATS_DIRECTION);
+	}
+	public void setStatsDirectionIndex(int idx) {
+		setProperty(STATS_DIRECTION, idx);
+	}
+
+	public int getHistoryDirectionIndex() {
+		return getPropertyAsInt(HISTORY_DIRECTION, DEFAULT_HISTORY_DIRECTION);
+	}
+	public void setHistoryDirectionIndex(int idx) {
+		setProperty(HISTORY_DIRECTION, idx);
+	}
+
+	public int getLogLevelIndex() {
+		return getPropertyAsInt(LOG_LEVEL, DEFAULT_LOG_LEVEL);
+	}
+	public void setLogLevelIndex(int idx) {
+		setProperty(LOG_LEVEL, idx);
+	}
+
+	@Override
+	public void threadStarted() {}
+
+	@Override
+	public void threadFinished() {}
+
 }

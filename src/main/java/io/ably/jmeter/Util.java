@@ -1,27 +1,27 @@
 package io.ably.jmeter;
 
+import org.apache.jmeter.config.Arguments;
+
 import javax.xml.bind.DatatypeConverter;
 import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 public class Util implements Constants {
 
 	private static SecureRandom random = new SecureRandom();
     private static char[] seeds = "abcdefghijklmnopqrstuvwxmy0123456789".toCharArray();
 
-	public static String generateClientId(String prefix) {
+	public static String generateRandomSuffix(String prefix) {
 		int leng = prefix.length();
-		int postLeng = MAX_CLIENT_ID_LENGTH - leng;
+		int postLeng = MAX_RANDOM_ID_LENGTH - leng - 1;
 		if (postLeng < 0) {
 			throw new IllegalArgumentException("ClientId prefix " + prefix + " is too long, max allowed is "
-					+ MAX_CLIENT_ID_LENGTH + " but was " + leng);
+					+ MAX_RANDOM_ID_LENGTH + " but was " + leng);
 		}
 		UUID uuid = UUID.randomUUID();
 		String string = uuid.toString().replace("-", "");
 		String post = string.substring(0, postLeng);
-		return prefix + post;
+		return prefix + "_" + post;
 	}
 
 	public static String generatePayload(int size) {
@@ -64,5 +64,36 @@ public class Util implements Constants {
 			return ((byte[])data).length;
 		}
 		return 0;
+	}
+
+	public static Arguments mapToArguments(Map<String, String> map) {
+		Arguments args = new Arguments();
+		for(Map.Entry<String, String> e : map.entrySet()) {
+			args.addArgument(e.getKey(), e.getValue());
+		}
+		return args;
+	}
+
+	public static Map<String, String> argumentsToMap(Arguments args) {
+		return args.getArgumentsAsMap();
+	}
+
+	public static String mapToString(Map<String, String> map) {
+		StringBuilder bldr = new StringBuilder();
+		for(Map.Entry<String, String> e : map.entrySet()) {
+			bldr.append(e.getKey()).append('=').append(e.getValue()).append('\n');
+		}
+		return bldr.toString();
+	}
+
+	public static Map<String, String> stringToMap(String str) {
+		Map<String, String> map = new HashMap<>();
+		for(String s : str.split("\n")) {
+			String[] parts = s.split("=");
+			if(parts.length == 2) {
+				map.put(parts[0], parts[1]);
+			}
+		}
+		return map;
 	}
 }

@@ -16,19 +16,19 @@ import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
 import org.apache.jmeter.threads.JMeterVariables;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.text.MessageFormat;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * A sampler that makes a subscription to a channel using an already-established realtime connection
  */
 public class RealtimeSubSampler extends AbstractAblySampler {
 	private static final long serialVersionUID = 2979978053740194951L;
-	private static final Logger logger = Logger.getLogger(RealtimeSubSampler.class.getCanonicalName());
+	private static final Logger logger = LoggerFactory.getLogger(RealtimeSubSampler.class.getCanonicalName());
 
 	private static class SubResult implements CompletionListener {
 		private ErrorInfo error;
@@ -91,11 +91,12 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 
 	@Override
 	public SampleResult sample(Entry arg0) {
+		logger.debug("sample");
 		SampleResult result = new SampleResult();
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		connection = (AblyRealtime) vars.getObject(AbstractAblySampler.CLIENT);
+		connection = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
 		if (connection == null) {
 			return fillFailedResult(result, "500", "Subscribe failed because connection is not established.");
 		}
@@ -118,7 +119,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			return fillFailedResult(result, "512", "Sample on message count: must be greater than 1.");
 		}
 
-		String channelName = getChannel();
+		String channelName = getChannelPrefix();
 		ErrorInfo subError = subscribe(channelName, sampleByTime, sampleCount);
 		if(subError != null) {
 			return fillFailedResult(result, String.valueOf(subError.statusCode), "Failed to subscribe to channel:" + channelName + "; error: " + subError.message);
@@ -128,7 +129,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			try {
 				TimeUnit.MILLISECONDS.sleep(sampleElapsedTime);
 			} catch (InterruptedException e) {
-				logger.log(Level.INFO, "Received exception when waiting for notification signal", e);
+				logger.info("Received exception when waiting for notification signal", e);
 			}
 			synchronized (dataLock) {
 				result.sampleStart();
@@ -146,7 +147,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 					try {
 						dataLock.wait();
 					} catch (InterruptedException e) {
-						logger.log(Level.INFO, "Received exception when waiting for notification signal", e);
+						logger.info("Received exception when waiting for notification signal", e);
 					}
 				}
 				result.sampleStart();
@@ -164,8 +165,8 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		String message = MessageFormat.format("Received {0} of message.", receivedCount);
 		byte[] content = isDebugResponse() ? bean.mergeContents("\n".getBytes()) : new byte[0];
 		fillOKResult(result, bean.getReceivedMessageSize(), bean.getAvgElapsedTime(), message, content);
-		if (logger.isLoggable(Level.FINE)) {
-			logger.fine("sub [channel]: " + channelName + ", [payload]: " + new String(content));
+		if (logger.isDebugEnabled()) {
+			logger.debug("sub [channel]: " + channelName + ", [payload]: " + new String(content));
 		}
 
 		if(receivedCount == 0) {
@@ -188,10 +189,10 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			channel.attach(subResult);
 			subError = subResult.waitForResult();
 		} catch (AblyException e) {
-			logger.log(Level.INFO, "attach failed", e);
+			logger.info("attach failed", e);
 			subError = e.errorInfo;
 		} catch (InterruptedException e) {
-			logger.log(Level.INFO, "attach failed", e);
+			logger.info("attach failed", e);
 			subError = new ErrorInfo(e.getMessage(), 50000, 500);
 		}
 		if(subError == null) {
@@ -251,7 +252,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 				}
 			}
 			if(msgTimestamp == 0 && (!printFlag)) {
-				logger.info(() -> "Payload does not include timestamp: " + msg);
+				logger.info("Payload does not include timestamp: " + msg);
 				printFlag = true;
 			} else {
 				bean.incrementElapsedTime(now - msgTimestamp);
@@ -282,7 +283,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		try {
 			TimeUnit.MILLISECONDS.sleep(Constants.SUB_FAIL_PENALTY);
 		} catch (InterruptedException e) {
-			logger.log(Level.INFO, "Received exception when waiting for notification signal", e);
+			logger.info("Received exception when waiting for notification signal", e);
 		}
 		return result;
 	}

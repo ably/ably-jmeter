@@ -8,25 +8,26 @@ import org.apache.jmeter.samplers.gui.AbstractSamplerGui;
 import org.apache.jmeter.testelement.TestElement;
 import org.apache.jorphan.gui.JLabeledChoice;
 import org.apache.jorphan.gui.JLabeledTextField;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.*;
-import java.util.logging.Logger;
 
 /**
  * The GUI for the realtime subscribe sampler
  */
 public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constants, ChangeListener{
 	private static final long serialVersionUID = 1715399546099472610L;
-	private static final Logger logger = Logger.getLogger(RealtimeSubSamplerUI.class.getCanonicalName());
+	private static final Logger logger = LoggerFactory.getLogger(RealtimeSubSamplerUI.class.getCanonicalName());
 
 	private JLabeledChoice sampleOnCondition;
 	private final JLabeledTextField sampleConditionValue = new JLabeledTextField("");
 	private final JLabeledTextField channelName = new JLabeledTextField("Channel name:");
 	private JCheckBox debugResponse = new JCheckBox("Debug response");
-	private JCheckBox timestamp = new JCheckBox("Payload includes timestamp");
+	private JCheckBox timestamp = new JCheckBox("Metadata includes timestamp");
 
 	public RealtimeSubSamplerUI() {
 		this.init();
@@ -52,7 +53,6 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		JPanel optsPanel1 = new HorizontalPanel();
 		optsPanel1.add(channelName);
 		channelName.setToolTipText("Channel to subscribe on");
-		optsPanel1.add(timestamp);
 		optsPanelCon.add(optsPanel1);
 		
 		JPanel optsPanel3 = new HorizontalPanel();
@@ -64,6 +64,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		optsPanelCon.add(optsPanel3);
 		
 		JPanel optsPanel2 = new HorizontalPanel();
+		optsPanel2.add(timestamp);
 		optsPanel2.add(debugResponse);
 		optsPanelCon.add(optsPanel2);
 
@@ -87,7 +88,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		super.configure(element);
 		RealtimeSubSampler sampler = (RealtimeSubSampler) element;
 
-		this.channelName.setText(sampler.getChannel());
+		this.channelName.setText(sampler.getChannelPrefix());
 		this.timestamp.setSelected(sampler.isAddTimestamp());
 		this.debugResponse.setSelected(sampler.isDebugResponse());
 		this.sampleOnCondition.setText(sampler.getSampleCondition());
@@ -112,7 +113,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 
 	private void setupSamplerProperties(RealtimeSubSampler sampler) {
 		this.configureTestElement(sampler);
-		sampler.setChannel(this.channelName.getText());
+		sampler.setChannelPrefix(this.channelName.getText());
 		sampler.setAddTimestamp(this.timestamp.isSelected());
 		sampler.setDebugResponse(this.debugResponse.isSelected());
 		sampler.setSampleCondition(this.sampleOnCondition.getText());
@@ -127,7 +128,7 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 	@Override
 	public void clearGui() {
 		super.clearGui();
-		this.channelName.setText(DEFAULT_CHANNEL_NAME);
+		this.channelName.setText(DEFAULT_CHANNEL_NAME_PREFIX);
 		this.timestamp.setSelected(false);
 		this.debugResponse.setSelected(false);
 		this.sampleOnCondition.setText(SAMPLE_ON_CONDITION_OPTION1);

@@ -3,6 +3,7 @@ package io.ably.jmeter.samplers;
 import java.text.MessageFormat;
 
 import io.ably.lib.realtime.AblyRealtime;
+import io.ably.lib.realtime.ConnectionState;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -39,13 +40,11 @@ public class DisconnectSampler extends AbstractAblySampler {
 
 		String clientId = client.options.clientId;
 		try {
-			result.sampleStart();
-
 			logger.info(MessageFormat.format("Disconnect connection {0}.", client));
-			client.close();
-			vars.remove(AbstractAblySampler.REALTIME_CLIENT); // clean up thread local var as well
-
+			result.sampleStart();
+			closeClient();
 			result.sampleEnd();
+			vars.remove(AbstractAblySampler.REALTIME_CLIENT); // clean up thread local var as well
 
 			result.setSuccessful(true);
 			result.setResponseData("Successful.".getBytes());
@@ -60,5 +59,18 @@ public class DisconnectSampler extends AbstractAblySampler {
 			result.setResponseCode("501");
 		}
 		return result;
+	}
+
+	private void closeClient() {
+		if(client != null) {
+			try {
+				if(client.connection.state != ConnectionState.closed) {
+					logger.info("closeClient: client is not closed; closing now");
+					client.close();
+				}
+			} catch(Exception e) {
+				logger.error("closeClient: exception closing client", e);
+			}
+		}
 	}
 }

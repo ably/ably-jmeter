@@ -1,12 +1,10 @@
 package io.ably.jmeter.samplers;
 
-import com.google.gson.JsonPrimitive;
 import io.ably.jmeter.Util;
 import io.ably.lib.realtime.AblyRealtime;
 import io.ably.lib.realtime.CompletionListener;
 import io.ably.lib.types.ErrorInfo;
 import io.ably.lib.types.Message;
-import io.ably.lib.util.JsonUtils;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -67,35 +65,16 @@ public class RealtimePubSampler extends AbstractAblySampler {
 
 		String clientId = client.options.clientId;
 		try {
-			if (MESSAGE_TYPE_HEX_STRING.equals(getMessageType())) {
-				payload = Util.hexToBinary(getMessage());
-			} else if (MESSAGE_TYPE_STRING.equals(getMessageType())) {
-				payload = getMessage();
-			} else if(MESSAGE_TYPE_RANDOM_STR_WITH_FIX_LEN.equals(getMessageType())) {
-				payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
-			}
-
-			channelName = getChannelPrefix();
-			if(isChannelNameSuffix()) {
-				channelName = Util.generateRandomSuffix(channelName);
-			}
+			payload = getPayload();
+			channelName = getChannelName();
 			vars.putObject(AbstractAblySampler.CHANNEL_NAME, channelName);
 			if (logger.isDebugEnabled()) {
 				logger.debug("pub [clientId]: " + clientId + ", [channel]: " + channelName + ", [payload]: " + Util.displayPayload(payload));
 			}
 
 			final PubResult pubOutcome = new PubResult();
-			Message msg = new Message(getMessageEventName(), payload);
-			String encoding = getMessageEncoding();
-			if(encoding != null && !encoding.isEmpty()) {
-				msg.encoding = encoding;
-			}
-			if(isAddTimestamp()) {
-				msg.extras = JsonUtils.object()
-						.add("metadata", JsonUtils.object()
-							.add("timestamp", new JsonPrimitive(System.currentTimeMillis())))
-						.toJson();
-			}
+			Message msg = getMessage(payload);
+
 			result.sampleStart();
 			client.channels.get(channelName).publish(msg, pubOutcome);
 			ErrorInfo error = pubOutcome.waitForResult();

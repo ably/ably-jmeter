@@ -1,12 +1,8 @@
 package io.ably.jmeter.samplers;
 
-import io.ably.jmeter.AblyLog;
-import io.ably.jmeter.Util;
 import io.ably.lib.realtime.AblyRealtime;
-import io.ably.lib.realtime.ConnectionState;
-import io.ably.lib.realtime.ConnectionStateListener.ConnectionStateChange;
 import io.ably.lib.types.ClientOptions;
-import io.ably.lib.util.Log;
+import io.ably.lib.types.ErrorInfo;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -26,18 +22,6 @@ public class ConnectSampler extends AbstractAblySampler {
 
 	private AblyRealtime client;
 
-	private static class ConnectResult {
-		private ConnectionStateChange state;
-		private synchronized void setState(ConnectionStateChange state) {
-			this.state = state;
-			notify();
-		}
-		private synchronized ConnectionStateChange waitForState() throws InterruptedException {
-			wait();
-			return state;
-		}
-	}
-
 	@Override
 	public SampleResult sample(Entry entry) {
 		logger.debug("sample");
@@ -56,29 +40,9 @@ public class ConnectSampler extends AbstractAblySampler {
 			return result;
 		}
 
-		ClientOptions opts = new ClientOptions();
-		String clientId = getClientIdPrefix();
+		ClientOptions opts = getRealtimeClientOptions(logger);
 		try {
-			if(isClientIdSuffix()) {
-				clientId = Util.generateRandomSuffix(clientId);
-			}
-			vars.putObject(AbstractAblySampler.CLIENT_ID, clientId);
-
-			String env = getEnvironment();
-			if(env != null && !env.isEmpty()) {
-				opts.environment = env;
-			}
-			opts.key = getApiKey();
-			opts.clientId = clientId;
-			opts.autoConnect = false;
-			opts.useTokenAuth = false;
-
-			int logLevel = AblyLog.asAblyLevel(getLogLevelIndex());
-			opts.logLevel = logLevel;
-			System.out.println("got Ably log level: " + logLevel);
-			if(logLevel != Log.NONE) {
-				opts.logHandler = AblyLog.getAblyHandler(logger);
-			}
+			vars.putObject(AbstractAblySampler.CLIENT_ID, opts.clientId);
 			client = new AblyRealtime(opts);
 		} catch (Exception e) {
 			logger.error("Failed to establish client " + client, e);
@@ -90,50 +54,33 @@ public class ConnectSampler extends AbstractAblySampler {
 		}
 
 		try {
-			final ConnectResult connectionOutcome = new ConnectResult();
-
-			client.connection.on(state -> {
-				switch(state.current) {
-					case connected:
-					case failed:
-					case suspended:
-						connectionOutcome.setState(state);
-						break;
-					default:
-						/* ignore */
-				}
-			}
-			);
+			ConnectResult connectionOutcome = new ConnectResult();
+			client.connection.on(connectionOutcome);
 
 			result.sampleStart();
 			client.connect();
-			ConnectionStateChange state = connectionOutcome.waitForState();
+			ErrorInfo error = connectionOutcome.waitForResult();
 			result.sampleEnd();
 
-			switch(state.current) {
-				case connected:
-					vars.putObject(AbstractAblySampler.REALTIME_CLIENT, client); // save connection object as thread local variable !!
-					result.setSuccessful(true);
-					result.setResponseData("Successful.".getBytes());
-					result.setResponseMessage(MessageFormat.format("Connection {0} established.", client));
-					result.setResponseCodeOK();
-					break;
-				case failed:
-				case suspended:
-					result.sampleEnd();
-					result.setSuccessful(false);
-					result.setResponseMessage(MessageFormat.format("Failed to establish client {0}.", state.reason.message));
-					result.setResponseData(MessageFormat.format("Client [{0}] failed. Couldn't establish connection.",
-							clientId).getBytes());
-					result.setResponseCode(String.valueOf(state.reason.statusCode));
-					break;
+			if(error == null) {
+				vars.putObject(AbstractAblySampler.REALTIME_CLIENT, client); // save connection object as thread local variable !!
+				result.setSuccessful(true);
+				result.setResponseData("Successful.".getBytes());
+				result.setResponseMessage(MessageFormat.format("Connection {0} established.", client));
+				result.setResponseCodeOK();
+			} else {
+				result.setSuccessful(false);
+				result.setResponseMessage(MessageFormat.format("Failed to establish client {0}.", error.message));
+				result.setResponseData(MessageFormat.format("Client [{0}] failed. Couldn't establish connection.",
+						opts.clientId).getBytes());
+				result.setResponseCode(String.valueOf(error.statusCode));
 			}
 		} catch (Exception e) {
 			logger.error("Failed to establish client " + client, e);
 			if (result.getEndTime() == 0) { result.sampleEnd(); } //avoid re-enter sampleEnd()
 			result.setSuccessful(false);
 			result.setResponseMessage(MessageFormat.format("Failed to establish client {0}.", client));
-			result.setResponseData(MessageFormat.format("Client [{0}] failed with exception.", clientId).getBytes());
+			result.setResponseData(MessageFormat.format("Client [{0}] failed with exception.", opts.clientId).getBytes());
 			result.setResponseCode("502");
 		}
 		return result;
@@ -141,15 +88,6 @@ public class ConnectSampler extends AbstractAblySampler {
 
 	@Override
 	public void threadFinished() {
-		if(client != null) {
-			try {
-				if(client.connection.state != ConnectionState.closed) {
-					logger.info("threadFinished: client is not closed; closing now");
-					client.close();
-				}
-			} catch(Exception e) {
-				logger.error("threadFinished: exception closing client", e);
-			}
-		}
+		closeClient(logger, client);
 	}
 }

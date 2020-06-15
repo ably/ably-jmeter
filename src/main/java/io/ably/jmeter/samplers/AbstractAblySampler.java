@@ -1,9 +1,20 @@
 package io.ably.jmeter.samplers;
 
+import com.google.gson.JsonPrimitive;
+import io.ably.jmeter.AblyLog;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
+import io.ably.lib.realtime.AblyRealtime;
+import io.ably.lib.realtime.ConnectionState;
+import io.ably.lib.realtime.ConnectionStateListener;
+import io.ably.lib.types.ClientOptions;
+import io.ably.lib.types.ErrorInfo;
+import io.ably.lib.types.Message;
+import io.ably.lib.util.JsonUtils;
+import io.ably.lib.util.Log;
 import org.apache.jmeter.samplers.AbstractSampler;
 import org.apache.jmeter.testelement.ThreadListener;
+import org.slf4j.Logger;
 
 import java.util.Map;
 
@@ -41,6 +52,14 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 		setProperty(CLIENT_ID_SUFFIX, clientIdSuffix);
 	}
 
+	public String getClientId() {
+		String clientId = getClientIdPrefix();
+		if(isClientIdSuffix()) {
+			clientId = Util.generateRandomSuffix(clientId);
+		}
+		return clientId;
+	}
+
 	public String getChannelPrefix() {
 		return getPropertyAsString(Constants.CHANNEL_NAME_PREFIX, Constants.DEFAULT_CHANNEL_NAME_PREFIX);
 	}
@@ -53,6 +72,14 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 	}
 	public void setChannelNameSuffix(boolean channelNameSuffix) {
 		setProperty(CHANNEL_NAME_SUFFIX, channelNameSuffix);
+	}
+
+	public String getChannelName() {
+		String channelName = getChannelPrefix();
+		if(isChannelNameSuffix()) {
+			channelName = Util.generateRandomSuffix(channelName);
+		}
+		return channelName;
 	}
 
 	public Map<String, String> getChannelParams() {
@@ -181,10 +208,118 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 		setProperty(LOG_LEVEL, idx);
 	}
 
+	public int getGroupSize() {
+		return getPropertyAsInt(GROUP_SIZE, DEFAULT_GROUP_SIZE);
+	}
+	public void setGroupSize(int size) {
+		setProperty(GROUP_SIZE, size);
+	}
+
+	protected ClientOptions getClientOptions(Logger logger) {
+		ClientOptions opts = new ClientOptions();
+		String clientId = getClientId();
+		String env = getEnvironment();
+		if(env != null && !env.isEmpty()) {
+			opts.environment = env;
+		}
+		opts.key = getApiKey();
+		opts.clientId = clientId;
+		opts.useTokenAuth = false;
+
+		int logLevel = AblyLog.asAblyLevel(getLogLevelIndex());
+		opts.logLevel = logLevel;
+		if(logLevel != Log.NONE) {
+			opts.logHandler = AblyLog.getAblyHandler(logger);
+		}
+		return opts;
+	}
+
+	protected ClientOptions getRealtimeClientOptions(Logger logger) {
+		ClientOptions opts = getClientOptions(logger);
+		opts.autoConnect = false;
+		return opts;
+	}
+
+	protected void closeAllClients(Logger logger, AblyRealtime[] clients) {
+		if(clients != null) {
+			for(AblyRealtime client : clients) {
+				closeClient(logger, client);
+			}
+		}
+	}
+
+	protected void closeClient(Logger logger, AblyRealtime client) {
+		if(client != null) {
+			try {
+				if(client.connection.state != ConnectionState.closed) {
+					logger.info("closeClient: client is not closed; closing now");
+					client.close();
+				}
+			} catch(Exception e) {
+				logger.error("closeClient: exception closing client", e);
+			}
+		}
+	}
+
+	protected Object getPayload() {
+		Object payload = null;
+		if (MESSAGE_TYPE_HEX_STRING.equals(getMessageType())) {
+			payload = Util.hexToBinary(getMessage());
+		} else if (MESSAGE_TYPE_STRING.equals(getMessageType())) {
+			payload = getMessage();
+		} else if(MESSAGE_TYPE_RANDOM_STR_WITH_FIX_LEN.equals(getMessageType())) {
+			payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
+		}
+		return payload;
+	}
+
+	protected Message getMessage(Object payload) {
+		Message msg = new Message(getMessageEventName(), payload);
+		String encoding = getMessageEncoding();
+		if(encoding != null && !encoding.isEmpty()) {
+			msg.encoding = encoding;
+		}
+		if(isAddTimestamp()) {
+			msg.extras = JsonUtils.object()
+					.add("metadata", JsonUtils.object()
+							.add("timestamp", new JsonPrimitive(System.currentTimeMillis())))
+					.toJson();
+		}
+		return msg;
+	}
+
 	@Override
 	public void threadStarted() {}
 
 	@Override
 	public void threadFinished() {}
 
+	protected static class ConnectResult implements ConnectionStateListener {
+		private ConnectionStateChange state;
+
+		private synchronized void setState(ConnectionStateChange state) {
+			this.state = state;
+			notify();
+		}
+
+		synchronized ErrorInfo waitForResult() throws InterruptedException {
+			while(state == null) {
+				wait();
+			}
+			return state.reason;
+		}
+
+		@Override
+		public void onConnectionStateChanged(ConnectionStateChange state) {
+			switch(state.current) {
+				case connected:
+				case failed:
+				case suspended:
+					setState(state);
+					break;
+				default:
+					/* ignore */
+			}
+		}
+	}
 }

@@ -3,9 +3,11 @@ package io.ably.jmeter;
 public interface Constants {
 	String ENVIRONMENT = "ably.environment";
 	String REALTIME_CLIENT = "ably.realtime_client";
+	String REALTIME_CLIENT_GROUP = "ably.realtime_client_group";
 	String REST_CLIENT = "ably.rest_client";
 	String API_KEY = "ably.api_key";
 	String CLIENT_ID = "ably.client_id";
+	String CLIENT_ID_GROUP = "ably.client_id_group";
 	String CLIENT_ID_PREFIX = "ably.client_id_prefix";
 	String CLIENT_ID_SUFFIX = "ably.client_id_suffix";
 	String MESSAGE_TYPE = "ably.message_type";
@@ -38,6 +40,7 @@ public interface Constants {
 	String HISTORY_DIRECTION = "ably.history_direction";
 	String DIRECTIONS = "backwards,forwards";
 	String LOG_LEVEL = "ably.log_level";
+	String GROUP_SIZE = "ably.group_size";
 	int MAX_RANDOM_ID_LENGTH = 32;
 	String DEFAULT_ENVIRONMENT = "${ably.environment}";
 	String DEFAULT_API_KEY = "${ably.api_key}";
@@ -54,6 +57,7 @@ public interface Constants {
 	String DEFAULT_HISTORY_START = "${TESTSTART.MS}";
 	String DEFAULT_HISTORY_END = "";
 	String DEFAULT_HISTORY_LIMIT = "100";
+	int DEFAULT_GROUP_SIZE = 32;
 	int DEFAULT_LOG_LEVEL = 4; // WARN
 	int DEFAULT_UNIT = 0; // minute
 	int DEFAULT_STATS_DIRECTION = 0; // backwards

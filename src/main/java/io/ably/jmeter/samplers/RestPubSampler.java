@@ -1,11 +1,8 @@
 package io.ably.jmeter.samplers;
 
-import com.google.gson.JsonPrimitive;
-import io.ably.jmeter.Util;
 import io.ably.lib.rest.AblyRest;
 import io.ably.lib.types.AblyException;
 import io.ably.lib.types.Message;
-import io.ably.lib.util.JsonUtils;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -41,31 +38,10 @@ public class RestPubSampler extends AbstractAblySampler {
 		}
 
 		try {
-			Object payload = null;
-			if (MESSAGE_TYPE_HEX_STRING.equals(getMessageType())) {
-				payload = Util.hexToBinary(getMessage());
-			} else if (MESSAGE_TYPE_STRING.equals(getMessageType())) {
-				payload = getMessage();
-			} else if(MESSAGE_TYPE_RANDOM_STR_WITH_FIX_LEN.equals(getMessageType())) {
-				payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
-			}
+			Object payload = getPayload();
+			String channelName = getChannelName();
+			Message msg = getMessage(payload);
 
-			String channelName = getChannelPrefix();
-			if(isChannelNameSuffix()) {
-				channelName = Util.generateRandomSuffix(channelName);
-			}
-			vars.putObject(AbstractAblySampler.CHANNEL_NAME, channelName);
-			Message msg = new Message(getMessageEventName(), payload);
-			String encoding = getMessageEncoding();
-			if(encoding != null && !encoding.isEmpty()) {
-				msg.encoding = encoding;
-			}
-			if(isAddTimestamp()) {
-				msg.extras = JsonUtils.object()
-						.add("metadata", JsonUtils.object()
-								.add("timestamp", new JsonPrimitive(System.currentTimeMillis())))
-						.toJson();
-			}
 			result.sampleStart();
 			client.channels.get(channelName).publish(new Message[]{msg});
 			result.sampleEnd();

@@ -2,6 +2,8 @@ package io.ably.jmeter;
 
 public interface Constants {
 	String ENVIRONMENT = "ably.environment";
+	String SSE_CLIENT = "ably.sse_client";
+	String SSE_CLIENT_HANDLER = "ably.sse_client_handler";
 	String REALTIME_CLIENT = "ably.realtime_client";
 	String REALTIME_CLIENT_GROUP = "ably.realtime_client_group";
 	String REST_CLIENT = "ably.rest_client";
@@ -48,8 +50,8 @@ public interface Constants {
 	String DEFAULT_EVENT_NAME = "test-event";
 	String DEFAULT_ENCODING = "";
 	String DEFAULT_CLIENTID = "client";
-	String DEFAULT_SAMPLE_VALUE_COUNT = "1";
-	String DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC = "1000";
+	int DEFAULT_SAMPLE_VALUE_COUNT = 1;
+	int DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC = 1000;
 	String DEFAULT_MESSAGE_FIX_LENGTH = "1024";
 	String DEFAULT_STATS_START = "${TESTSTART.MS}";
 	String DEFAULT_STATS_END = "";

@@ -1,9 +1,6 @@
 package io.ably.jmeter.samplers;
 
-import java.text.MessageFormat;
-
-import io.ably.lib.realtime.AblyRealtime;
-import io.ably.lib.realtime.ConnectionState;
+import com.launchdarkly.eventsource.EventSource;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -11,14 +8,14 @@ import org.apache.jmeter.threads.JMeterVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.MessageFormat;
+
 /**
  * A sampler that disconnects a previously established Ably realtime connection
  */
-public class DisconnectSampler extends BaseSampler {
+public class SSEDisconnectSampler extends BaseSampler {
 	private static final long serialVersionUID = 4360869021667126983L;
-	private static final Logger logger = LoggerFactory.getLogger(DisconnectSampler.class.getCanonicalName());
-
-	private transient AblyRealtime client = null;
+	private static final Logger logger = LoggerFactory.getLogger(SSEDisconnectSampler.class.getCanonicalName());
 
 	@Override
 	public SampleResult sample(Entry entry) {
@@ -27,7 +24,7 @@ public class DisconnectSampler extends BaseSampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		client = (AblyRealtime) vars.getObject(BaseSampler.REALTIME_CLIENT);
+		EventSource client = (EventSource) vars.getObject(BaseSampler.SSE_CLIENT);
 		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
@@ -38,13 +35,15 @@ public class DisconnectSampler extends BaseSampler {
 			return result;
 		}
 
-		String clientId = client.options.clientId;
+		SSEConnectSampler.SSESubscriptionHandler handler = (SSEConnectSampler.SSESubscriptionHandler)vars.getObject(BaseSampler.SSE_CLIENT_HANDLER);
+		String clientId = handler.clientId;
 		try {
 			logger.info(MessageFormat.format("Disconnect connection {0}.", client));
 			result.sampleStart();
-			closeClient();
+			closeSSEClient(logger, client);
 			result.sampleEnd();
-			vars.remove(BaseSampler.REALTIME_CLIENT); // clean up thread local var as well
+			vars.remove(BaseSampler.SSE_CLIENT);
+			vars.remove(BaseSampler.SSE_CLIENT_HANDLER);
 
 			result.setSuccessful(true);
 			result.setResponseData("Successful.".getBytes());
@@ -59,18 +58,5 @@ public class DisconnectSampler extends BaseSampler {
 			result.setResponseCode("501");
 		}
 		return result;
-	}
-
-	private void closeClient() {
-		if(client != null) {
-			try {
-				if(client.connection.state != ConnectionState.closed) {
-					logger.info("closeClient: client is not closed; closing now");
-					client.close();
-				}
-			} catch(Exception e) {
-				logger.error("closeClient: exception closing client", e);
-			}
-		}
 	}
 }

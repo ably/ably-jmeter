@@ -16,7 +16,7 @@ import java.text.MessageFormat;
  * A sampler that establishes an Ably realtime connection and stores the
  * client instance in thread scope
  */
-public class ConnectGroupSampler extends AbstractAblySampler {
+public class ConnectGroupSampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(ConnectGroupSampler.class.getCanonicalName());
 
@@ -29,7 +29,7 @@ public class ConnectGroupSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		clients = (AblyRealtime[]) vars.getObject(AbstractAblySampler.REALTIME_CLIENT_GROUP);
+		clients = (AblyRealtime[]) vars.getObject(BaseSampler.REALTIME_CLIENT_GROUP);
 		if(clients != null) {
 			result.sampleStart();
 			result.setSuccessful(false);
@@ -49,7 +49,7 @@ public class ConnectGroupSampler extends AbstractAblySampler {
 				clients[i] = new AblyRealtime(opts);
 				clientIds[i] = opts.clientId;
 			}
-			vars.putObject(AbstractAblySampler.CLIENT_ID_GROUP, clientIds);
+			vars.putObject(BaseSampler.CLIENT_ID_GROUP, clientIds);
 		} catch (Exception e) {
 			logger.error("Failed to establish client", e);
 			result.setSuccessful(false);
@@ -79,7 +79,7 @@ public class ConnectGroupSampler extends AbstractAblySampler {
 			result.sampleEnd();
 
 			if(firstError == null) {
-				vars.putObject(AbstractAblySampler.REALTIME_CLIENT_GROUP, clients); // save connection object as thread local variable !!
+				vars.putObject(BaseSampler.REALTIME_CLIENT_GROUP, clients); // save connection object as thread local variable !!
 				result.setSuccessful(true);
 				result.setResponseData("Successful.".getBytes());
 				result.setResponseMessage("Connections established.");

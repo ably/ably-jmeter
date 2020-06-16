@@ -3,7 +3,7 @@ package io.ably.jmeter.gui;
 import io.ably.jmeter.AblyLog;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
-import io.ably.jmeter.samplers.AbstractAblySampler;
+import io.ably.jmeter.samplers.BaseSampler;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.config.gui.ArgumentsPanel;
 import org.apache.jmeter.gui.util.HorizontalPanel;
@@ -47,6 +47,12 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 	final JSyntaxTextArea sendMessage = JSyntaxTextArea.getInstance(10, 50);
 	final JTextScrollPane messagePanel = JTextScrollPane.getInstance(sendMessage);
 	final JLabeledTextField stringLength = new JLabeledTextField("Length:");
+
+	JLabeledChoice sampleOnCondition;
+	final JLabeledTextField sampleConditionValue = new JLabeledTextField("");
+	final JLabeledTextField channelName = new JLabeledTextField("Channel name:");
+	JCheckBox debugResponse = new JCheckBox("Debug response");
+	JCheckBox subTimestamp = new JCheckBox("Metadata includes timestamp");
 
 	public JPanel createConnPanel() {
 		JPanel con = new HorizontalPanel();
@@ -148,6 +154,33 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		return paramsPanelCon;
 	}
 
+	JPanel createSubOption() {
+		JPanel optsPanelCon = new VerticalPanel();
+		optsPanelCon.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Sub options"));
+
+		sampleOnCondition = new JLabeledChoice("Sample on:", new String[] {SAMPLE_ON_CONDITION_OPTION1, SAMPLE_ON_CONDITION_OPTION2});
+
+		JPanel optsPanel1 = new HorizontalPanel();
+		optsPanel1.add(channelName);
+		channelName.setToolTipText("Channel to subscribe on");
+		optsPanelCon.add(optsPanel1);
+
+		JPanel optsPanel3 = new HorizontalPanel();
+		sampleOnCondition.addChangeListener(this);
+		optsPanel3.add(sampleOnCondition);
+		optsPanel3.add(sampleConditionValue);
+		sampleOnCondition.setToolTipText("When sub sampler should report out");
+		sampleConditionValue.setToolTipText("Please specify an integer value great than 0, other values will be ignored");
+		optsPanelCon.add(optsPanel3);
+
+		JPanel optsPanel2 = new HorizontalPanel();
+		optsPanel2.add(subTimestamp);
+		optsPanel2.add(debugResponse);
+		optsPanelCon.add(optsPanel2);
+
+		return optsPanelCon;
+	}
+
 	@Override
 	public void actionPerformed(ActionEvent e) {}
 
@@ -165,9 +198,16 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 				logger.info("Unknown message type.");
 			}
 		}
+		if(e.getSource() == sampleOnCondition) {
+			if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
+				sampleConditionValue.setText(String.valueOf(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC));
+			} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
+				sampleConditionValue.setText(String.valueOf(DEFAULT_SAMPLE_VALUE_COUNT));
+			}
+		}
 	}
 
-	public void configureClient(AbstractAblySampler sampler) {
+	public void configureClient(BaseSampler sampler) {
 		serverAddr.setText(sampler.getEnvironment());
 		apiKey.setText(sampler.getApiKey());
 		clientIdPrefix.setText(sampler.getClientIdPrefix());
@@ -179,7 +219,7 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		logLevel.setSelectedIndex(sampler.getLogLevelIndex());
 	}
 
-	public void configurePublisher(AbstractAblySampler sampler) {
+	public void configurePublisher(BaseSampler sampler) {
 		channelNamePrefix.setText(sampler.getChannelPrefix());
 		if(sampler.isChannelNameSuffix()) {
 			channelNameSuffix.setSelected(true);
@@ -202,11 +242,24 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		sendMessage.setText(sampler.getMessage());
 	}
 
-	public void configureParams(AbstractAblySampler sampler) {
+	public void configureParams(BaseSampler sampler) {
 		channelParams.configure(Util.mapToArguments(sampler.getChannelParams()));
 	}
 
-	public void setupSamplerClientProperties(AbstractAblySampler sampler) {
+	public void configureSubscriber(BaseSampler sampler) {
+		channelName.setText(sampler.getChannelPrefix());
+		subTimestamp.setSelected(sampler.isAddTimestamp());
+		debugResponse.setSelected(sampler.isDebugResponse());
+		sampleOnCondition.setText(sampler.getSampleCondition());
+
+		if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
+			sampleConditionValue.setText(String.valueOf(sampler.getSampleElapsedTime()));
+		} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
+			sampleConditionValue.setText(String.valueOf(sampler.getSampleCount()));
+		}
+	}
+
+	public void setupSamplerClientProperties(BaseSampler sampler) {
 		sampler.setEnvironment(serverAddr.getText());
 		sampler.setApiKey(apiKey.getText());
 		sampler.setClientIdPrefix(clientIdPrefix.getText());
@@ -214,7 +267,7 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		sampler.setLogLevelIndex(logLevel.getSelectedIndex());
 	}
 
-	public void setupSamplerPublishProperties(AbstractAblySampler sampler) {
+	public void setupSamplerPublishProperties(BaseSampler sampler) {
 		sampler.setChannelPrefix(channelNamePrefix.getText());
 		sampler.setChannelNameSuffix(channelNameSuffix.isSelected());
 		sampler.setMessageEventName(eventName.getText());
@@ -225,8 +278,21 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		sampler.setMessage(sendMessage.getText());
 	}
 
-	public void setupSamplerParamsProperties(AbstractAblySampler sampler) {
+	public void setupSamplerParamsProperties(BaseSampler sampler) {
 		sampler.setChannelParams(Util.argumentsToMap((Arguments)channelParams.createTestElement()));
+	}
+
+	public void setupSamplerSubscribeProperties(BaseSampler sampler) {
+		sampler.setChannelPrefix(channelName.getText());
+		sampler.setAddTimestamp(subTimestamp.isSelected());
+		sampler.setDebugResponse(debugResponse.isSelected());
+		sampler.setSampleCondition(sampleOnCondition.getText());
+
+		if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
+			sampler.setSampleElapsedTime(Integer.parseInt(sampleConditionValue.getText()));
+		} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
+			sampler.setSampleCount(Integer.parseInt(sampleConditionValue.getText()));
+		}
 	}
 
 	public void clearClientUI() {
@@ -250,5 +316,13 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 
 	public void clearParamsUI() {
 		channelParams.clear();
+	}
+
+	public void clearSubscribeUI() {
+		channelName.setText(DEFAULT_CHANNEL_NAME_PREFIX);
+		subTimestamp.setSelected(false);
+		debugResponse.setSelected(false);
+		sampleOnCondition.setText(SAMPLE_ON_CONDITION_OPTION1);
+		sampleConditionValue.setText(String.valueOf(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC));
 	}
 }

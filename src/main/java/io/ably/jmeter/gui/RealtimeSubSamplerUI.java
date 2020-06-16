@@ -20,14 +20,9 @@ import java.awt.*;
  * The GUI for the realtime subscribe sampler
  */
 public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constants, ChangeListener{
+	private CommonUIElements uiElements = new CommonUIElements();
 	private static final long serialVersionUID = 1715399546099472610L;
 	private static final Logger logger = LoggerFactory.getLogger(RealtimeSubSamplerUI.class.getCanonicalName());
-
-	private JLabeledChoice sampleOnCondition;
-	private final JLabeledTextField sampleConditionValue = new JLabeledTextField("");
-	private final JLabeledTextField channelName = new JLabeledTextField("Channel name:");
-	private JCheckBox debugResponse = new JCheckBox("Debug response");
-	private JCheckBox timestamp = new JCheckBox("Metadata includes timestamp");
 
 	public RealtimeSubSamplerUI() {
 		this.init();
@@ -41,63 +36,26 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 		JPanel mainPanel = new VerticalPanel();
 		add(mainPanel, BorderLayout.CENTER);
 
-		mainPanel.add(createSubOption());
+		mainPanel.add(uiElements.createSubOption());
 	}
-	
-	private JPanel createSubOption() {
-		JPanel optsPanelCon = new VerticalPanel();
-		optsPanelCon.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Sub options"));
 
-		sampleOnCondition = new JLabeledChoice("Sample on:", new String[] {SAMPLE_ON_CONDITION_OPTION1, SAMPLE_ON_CONDITION_OPTION2});
-
-		JPanel optsPanel1 = new HorizontalPanel();
-		optsPanel1.add(channelName);
-		channelName.setToolTipText("Channel to subscribe on");
-		optsPanelCon.add(optsPanel1);
-		
-		JPanel optsPanel3 = new HorizontalPanel();
-		sampleOnCondition.addChangeListener(this);
-		optsPanel3.add(sampleOnCondition);
-		optsPanel3.add(sampleConditionValue);
-		sampleOnCondition.setToolTipText("When sub sampler should report out");
-		sampleConditionValue.setToolTipText("Please specify an integer value great than 0, other values will be ignored");
-		optsPanelCon.add(optsPanel3);
-		
-		JPanel optsPanel2 = new HorizontalPanel();
-		optsPanel2.add(timestamp);
-		optsPanel2.add(debugResponse);
-		optsPanelCon.add(optsPanel2);
-
-		return optsPanelCon;
-	}
-	
 	@Override
 	public String getStaticLabel() {
 		return "Ably Realtime Subscribe";
 	}
-	
+
 	@Override
 	public TestElement createTestElement() {
 		RealtimeSubSampler sampler = new RealtimeSubSampler();
 		this.setupSamplerProperties(sampler);
 		return sampler;
 	}
-	
+
 	@Override
 	public void configure(TestElement element) {
 		super.configure(element);
 		RealtimeSubSampler sampler = (RealtimeSubSampler) element;
-
-		this.channelName.setText(sampler.getChannelPrefix());
-		this.timestamp.setSelected(sampler.isAddTimestamp());
-		this.debugResponse.setSelected(sampler.isDebugResponse());
-		this.sampleOnCondition.setText(sampler.getSampleCondition());
-
-		if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
-			this.sampleConditionValue.setText(sampler.getSampleElapsedTime());
-		} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
-			this.sampleConditionValue.setText(sampler.getSampleCount());
-		}
+		uiElements.configureSubscriber(sampler);
 	}
 
 	@Override
@@ -113,36 +71,15 @@ public class RealtimeSubSamplerUI extends AbstractSamplerGui implements Constant
 
 	private void setupSamplerProperties(RealtimeSubSampler sampler) {
 		this.configureTestElement(sampler);
-		sampler.setChannelPrefix(this.channelName.getText());
-		sampler.setAddTimestamp(this.timestamp.isSelected());
-		sampler.setDebugResponse(this.debugResponse.isSelected());
-		sampler.setSampleCondition(this.sampleOnCondition.getText());
-		
-		if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
-			sampler.setSampleElapsedTime(this.sampleConditionValue.getText());
-		} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
-			sampler.setSampleCount(this.sampleConditionValue.getText());
-		}
+		uiElements.setupSamplerSubscribeProperties(sampler);
 	}
 	
 	@Override
 	public void clearGui() {
 		super.clearGui();
-		this.channelName.setText(DEFAULT_CHANNEL_NAME_PREFIX);
-		this.timestamp.setSelected(false);
-		this.debugResponse.setSelected(false);
-		this.sampleOnCondition.setText(SAMPLE_ON_CONDITION_OPTION1);
-		this.sampleConditionValue.setText(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
+		uiElements.clearSubscribeUI();
 	}
 
 	@Override
-	public void stateChanged(ChangeEvent e) {
-		if(this.sampleOnCondition == e.getSource()) {
-			if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
-				sampleConditionValue.setText(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
-			} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
-				sampleConditionValue.setText(DEFAULT_SAMPLE_VALUE_COUNT);
-			}
-		}
-	}
+	public void stateChanged(ChangeEvent e) {}
 }

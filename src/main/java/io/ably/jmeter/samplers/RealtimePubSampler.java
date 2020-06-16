@@ -18,7 +18,7 @@ import java.text.MessageFormat;
  * A sampler that publishes a single message on a previously established Ably realtime connection.
  * Publishes are made in transient mode to the given channel
  */
-public class RealtimePubSampler extends AbstractAblySampler {
+public class RealtimePubSampler extends BaseSampler {
 	private static final long serialVersionUID = 4312341622759500786L;
 	private static final Logger logger = LoggerFactory.getLogger(RealtimePubSampler.class.getCanonicalName());
 
@@ -52,7 +52,7 @@ public class RealtimePubSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 	
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		AblyRealtime client = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
+		AblyRealtime client = (AblyRealtime) vars.getObject(BaseSampler.REALTIME_CLIENT);
 		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
@@ -67,7 +67,7 @@ public class RealtimePubSampler extends AbstractAblySampler {
 		try {
 			payload = getPayload();
 			channelName = getChannelName();
-			vars.putObject(AbstractAblySampler.CHANNEL_NAME, channelName);
+			vars.putObject(BaseSampler.CHANNEL_NAME, channelName);
 			if(logger.isDebugEnabled()) {
 				logger.debug("pub [clientId]: " + clientId + ", [channel]: " + channelName + ", [payload]: " + Util.displayPayload(payload));
 			}

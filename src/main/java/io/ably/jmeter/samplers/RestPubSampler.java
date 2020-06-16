@@ -15,7 +15,7 @@ import java.text.MessageFormat;
 /**
  * A sampler that publishes a single message to a given channel using the Ably REST client
  */
-public class RestPubSampler extends AbstractAblySampler {
+public class RestPubSampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(RestPubSampler.class.getCanonicalName());
 
@@ -26,7 +26,7 @@ public class RestPubSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		AblyRest client = (AblyRest) vars.getObject(AbstractAblySampler.REST_CLIENT);
+		AblyRest client = (AblyRest) vars.getObject(BaseSampler.REST_CLIENT);
 		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);

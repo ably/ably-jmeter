@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * A sampler that makes a single stats request using the Ably REST client
  */
-public class RestHistorySampler extends AbstractAblySampler {
+public class RestHistorySampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(RestHistorySampler.class.getCanonicalName());
 
@@ -31,7 +31,7 @@ public class RestHistorySampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		AblyRest client = (AblyRest) vars.getObject(AbstractAblySampler.REST_CLIENT);
+		AblyRest client = (AblyRest) vars.getObject(BaseSampler.REST_CLIENT);
 		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);

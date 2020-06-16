@@ -1,6 +1,7 @@
 package io.ably.jmeter.samplers;
 
 import com.google.gson.JsonPrimitive;
+import com.launchdarkly.eventsource.*;
 import io.ably.jmeter.AblyLog;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
@@ -22,7 +23,7 @@ import java.util.Map;
 /**
  * A base model for properties used by multiple samplers
  */
-public abstract class AbstractAblySampler extends AbstractSampler implements Constants, ThreadListener {
+public abstract class BaseSampler extends AbstractSampler implements Constants, ThreadListener {
 	private static final long serialVersionUID = 7163793218595455807L;
 
 	public String getEnvironment() {
@@ -223,17 +224,17 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 		setProperty(Constants.SAMPLE_CONDITION, option);
 	}
 
-	public String getSampleCount() {
-		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_COUNT);
+	public int getSampleCount() {
+		return getPropertyAsInt(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_COUNT);
 	}
-	public void setSampleCount(String count) {
+	public void setSampleCount(int count) {
 		setProperty(Constants.SAMPLE_CONDITION_VALUE, count);
 	}
 
-	public String getSampleElapsedTime() {
-		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
+	public int getSampleElapsedTime() {
+		return getPropertyAsInt(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
 	}
-	public void setSampleElapsedTime(String elapsedTime) {
+	public void setSampleElapsedTime(int elapsedTime) {
 		setProperty(Constants.SAMPLE_CONDITION_VALUE, elapsedTime);
 	}
 
@@ -286,6 +287,20 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 				}
 			} catch(Exception e) {
 				logger.error("closeClient: exception closing client", e);
+			}
+		}
+	}
+
+	protected void closeSSEClient(Logger logger, EventSource client) {
+		if(client != null) {
+			try {
+				ReadyState state = client.getState();
+				if(state != ReadyState.RAW || state != ReadyState.SHUTDOWN) {
+					logger.info("closeSSEClient: client is not closed; closing now");
+					client.close();
+				}
+			} catch(Exception e) {
+				logger.error("closeSSEClient: exception closing client", e);
 			}
 		}
 	}

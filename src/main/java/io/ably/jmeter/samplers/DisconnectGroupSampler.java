@@ -1,7 +1,6 @@
 package io.ably.jmeter.samplers;
 
 import io.ably.lib.realtime.AblyRealtime;
-import io.ably.lib.realtime.ConnectionState;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.threads.JMeterContextService;
@@ -9,12 +8,10 @@ import org.apache.jmeter.threads.JMeterVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.MessageFormat;
-
 /**
  * A sampler that disconnects a previously established Ably realtime connection
  */
-public class DisconnectGroupSampler extends AbstractAblySampler {
+public class DisconnectGroupSampler extends BaseSampler {
 	private static final long serialVersionUID = 4360869021667126983L;
 	private static final Logger logger = LoggerFactory.getLogger(DisconnectGroupSampler.class.getCanonicalName());
 
@@ -27,7 +24,7 @@ public class DisconnectGroupSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		clients = (AblyRealtime[]) vars.getObject(AbstractAblySampler.REALTIME_CLIENT_GROUP);
+		clients = (AblyRealtime[]) vars.getObject(BaseSampler.REALTIME_CLIENT_GROUP);
 		if(clients == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
@@ -44,7 +41,7 @@ public class DisconnectGroupSampler extends AbstractAblySampler {
 			result.sampleStart();
 			closeAllClients(logger, clients);
 			result.sampleEnd();
-			vars.remove(AbstractAblySampler.REALTIME_CLIENT_GROUP); // clean up thread local var as well
+			vars.remove(BaseSampler.REALTIME_CLIENT_GROUP); // clean up thread local var as well
 
 			result.setSuccessful(true);
 			result.setResponseData("Successful.".getBytes());

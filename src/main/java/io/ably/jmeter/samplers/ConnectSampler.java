@@ -16,7 +16,7 @@ import java.text.MessageFormat;
  * A sampler that establishes an Ably realtime connection and stores the
  * client instance in thread scope
  */
-public class ConnectSampler extends AbstractAblySampler {
+public class ConnectSampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(ConnectSampler.class.getCanonicalName());
 
@@ -29,7 +29,7 @@ public class ConnectSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		client = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
+		client = (AblyRealtime) vars.getObject(BaseSampler.REALTIME_CLIENT);
 		if(client != null) {
 			result.sampleStart();
 			result.setSuccessful(false);
@@ -42,7 +42,7 @@ public class ConnectSampler extends AbstractAblySampler {
 
 		ClientOptions opts = getRealtimeClientOptions(logger);
 		try {
-			vars.putObject(AbstractAblySampler.CLIENT_ID, opts.clientId);
+			vars.putObject(BaseSampler.CLIENT_ID, opts.clientId);
 			client = new AblyRealtime(opts);
 		} catch (Exception e) {
 			logger.error("Failed to establish client " + client, e);
@@ -63,7 +63,7 @@ public class ConnectSampler extends AbstractAblySampler {
 			result.sampleEnd();
 
 			if(error == null) {
-				vars.putObject(AbstractAblySampler.REALTIME_CLIENT, client); // save connection object as thread local variable !!
+				vars.putObject(BaseSampler.REALTIME_CLIENT, client); // save connection object as thread local variable !!
 				result.setSuccessful(true);
 				result.setResponseData("Successful.".getBytes());
 				result.setResponseMessage(MessageFormat.format("Connection {0} established.", client));

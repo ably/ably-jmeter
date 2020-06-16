@@ -32,7 +32,7 @@ public class RestStatsSampler extends AbstractAblySampler {
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRest client = (AblyRest) vars.getObject(AbstractAblySampler.REST_CLIENT);
-		if (client == null) {
+		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
 			result.setResponseMessage("Stats: client configuration not found.");

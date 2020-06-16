@@ -1,7 +1,5 @@
 package io.ably.jmeter.samplers;
 
-import java.text.MessageFormat;
-
 import io.ably.lib.realtime.AblyRealtime;
 import io.ably.lib.realtime.ConnectionState;
 import org.apache.jmeter.samplers.Entry;
@@ -11,14 +9,16 @@ import org.apache.jmeter.threads.JMeterVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.text.MessageFormat;
+
 /**
  * A sampler that disconnects a previously established Ably realtime connection
  */
-public class DisconnectSampler extends AbstractAblySampler {
+public class DisconnectGroupSampler extends AbstractAblySampler {
 	private static final long serialVersionUID = 4360869021667126983L;
-	private static final Logger logger = LoggerFactory.getLogger(DisconnectSampler.class.getCanonicalName());
+	private static final Logger logger = LoggerFactory.getLogger(DisconnectGroupSampler.class.getCanonicalName());
 
-	private transient AblyRealtime client = null;
+	private transient AblyRealtime[] clients = null;
 
 	@Override
 	public SampleResult sample(Entry entry) {
@@ -27,8 +27,8 @@ public class DisconnectSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		client = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
-		if(client == null) {
+		clients = (AblyRealtime[]) vars.getObject(AbstractAblySampler.REALTIME_CLIENT_GROUP);
+		if(clients == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
 			result.setResponseMessage("Connection not found.");
@@ -38,39 +38,26 @@ public class DisconnectSampler extends AbstractAblySampler {
 			return result;
 		}
 
-		String clientId = client.options.clientId;
 		try {
-			logger.info(MessageFormat.format("Disconnect connection {0}.", client));
+			logger.info("Disconnect connection group.");
+
 			result.sampleStart();
-			closeClient();
+			closeAllClients(logger, clients);
 			result.sampleEnd();
-			vars.remove(AbstractAblySampler.REALTIME_CLIENT); // clean up thread local var as well
+			vars.remove(AbstractAblySampler.REALTIME_CLIENT_GROUP); // clean up thread local var as well
 
 			result.setSuccessful(true);
 			result.setResponseData("Successful.".getBytes());
-			result.setResponseMessage(MessageFormat.format("Connection {0} disconnected.", client));
+			result.setResponseMessage("Connection disconnected.");
 			result.setResponseCodeOK();
 		} catch (Exception e) {
-			logger.error("Failed to disconnect client" + client, e);
+			logger.error("Failed to disconnect client", e);
 			if(result.getEndTime() == 0) result.sampleEnd(); //avoid re-enter sampleEnd()
 			result.setSuccessful(false);
-			result.setResponseMessage(MessageFormat.format("Failed to disconnect client {0}.", client));
-			result.setResponseData(MessageFormat.format("Client [{0}] failed. Couldn't disconnect client.", (clientId == null ? "null" : clientId)).getBytes());
+			result.setResponseMessage("Failed to disconnect client.");
+			result.setResponseData("Couldn't disconnect client.".getBytes());
 			result.setResponseCode("501");
 		}
 		return result;
-	}
-
-	private void closeClient() {
-		if(client != null) {
-			try {
-				if(client.connection.state != ConnectionState.closed) {
-					logger.info("closeClient: client is not closed; closing now");
-					client.close();
-				}
-			} catch(Exception e) {
-				logger.error("closeClient: exception closing client", e);
-			}
-		}
 	}
 }

@@ -27,7 +27,7 @@ public class RestPubSampler extends AbstractAblySampler {
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRest client = (AblyRest) vars.getObject(AbstractAblySampler.REST_CLIENT);
-		if (client == null) {
+		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
 			result.setResponseMessage("Publish: client configuration not found.");
@@ -52,7 +52,7 @@ public class RestPubSampler extends AbstractAblySampler {
 			result.setResponseCodeOK();
 		} catch (AblyException e) {
 			logger.error("Failed to publish " + client , e);
-			if (result.getEndTime() == 0) { result.sampleEnd(); } //avoid re-enter sampleEnd()
+			if(result.getEndTime() == 0) { result.sampleEnd(); } //avoid re-enter sampleEnd()
 			result.setSuccessful(false);
 			result.setResponseMessage(MessageFormat.format("Failed to publish {0}.", client));
 			result.setResponseData(MessageFormat.format("Publish [{0}] failed with exception.", client.options.clientId).getBytes());

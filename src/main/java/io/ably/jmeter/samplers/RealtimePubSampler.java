@@ -53,7 +53,7 @@ public class RealtimePubSampler extends AbstractAblySampler {
 	
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRealtime client = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
-		if (client == null) {
+		if(client == null) {
 			result.sampleStart();
 			result.setSuccessful(false);
 			result.setResponseMessage("Publish: Connection not found.");
@@ -68,7 +68,7 @@ public class RealtimePubSampler extends AbstractAblySampler {
 			payload = getPayload();
 			channelName = getChannelName();
 			vars.putObject(AbstractAblySampler.CHANNEL_NAME, channelName);
-			if (logger.isDebugEnabled()) {
+			if(logger.isDebugEnabled()) {
 				logger.debug("pub [clientId]: " + clientId + ", [channel]: " + channelName + ", [payload]: " + Util.displayPayload(payload));
 			}
 
@@ -100,13 +100,13 @@ public class RealtimePubSampler extends AbstractAblySampler {
 
 		} catch (Exception ex) {
 			logger.error("Publish failed for connection " + client, ex);
-			if (result.getEndTime() == 0) result.sampleEnd();
+			if(result.getEndTime() == 0) result.sampleEnd();
 			result.setLatency(result.getEndTime() - result.getStartTime());
 			result.setSuccessful(false);
 			result.setResponseMessage(MessageFormat.format("Publish failed for connection {0}.", client));
 			result.setResponseData(MessageFormat.format("Client [{0}] publish failed: {1}", (clientId == null ? "null" : clientId), ex.getMessage()).getBytes());
 			result.setResponseCode("502");
-			if (logger.isWarnEnabled()) {
+			if(logger.isWarnEnabled()) {
 				logger.warn(MessageFormat.format("** [clientId: {0}, channel: {1}, payload: {2}] Publish failed for connection {3}.", (clientId == null ? "null" : clientId),
 						channelName, Util.displayPayload(payload), client));
 			}

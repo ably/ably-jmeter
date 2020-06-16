@@ -5,6 +5,7 @@ import io.ably.jmeter.AblyLog;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
 import io.ably.lib.realtime.AblyRealtime;
+import io.ably.lib.realtime.CompletionListener;
 import io.ably.lib.realtime.ConnectionState;
 import io.ably.lib.realtime.ConnectionStateListener;
 import io.ably.lib.types.ClientOptions;
@@ -215,6 +216,34 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 		setProperty(GROUP_SIZE, size);
 	}
 
+	public String getSampleCondition() {
+		return getPropertyAsString(Constants.SAMPLE_CONDITION, Constants.SAMPLE_ON_CONDITION_OPTION1);
+	}
+	public void setSampleCondition(String option) {
+		setProperty(Constants.SAMPLE_CONDITION, option);
+	}
+
+	public String getSampleCount() {
+		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_COUNT);
+	}
+	public void setSampleCount(String count) {
+		setProperty(Constants.SAMPLE_CONDITION_VALUE, count);
+	}
+
+	public String getSampleElapsedTime() {
+		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
+	}
+	public void setSampleElapsedTime(String elapsedTime) {
+		setProperty(Constants.SAMPLE_CONDITION_VALUE, elapsedTime);
+	}
+
+	public boolean isDebugResponse() {
+		return getPropertyAsBoolean(Constants.DEBUG_RESPONSE, false);
+	}
+	public void setDebugResponse(boolean debugResponse) {
+		setProperty(Constants.DEBUG_RESPONSE, debugResponse);
+	}
+
 	protected ClientOptions getClientOptions(Logger logger) {
 		ClientOptions opts = new ClientOptions();
 		String clientId = getClientId();
@@ -263,9 +292,9 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 
 	protected Object getPayload() {
 		Object payload = null;
-		if (MESSAGE_TYPE_HEX_STRING.equals(getMessageType())) {
+		if(MESSAGE_TYPE_HEX_STRING.equals(getMessageType())) {
 			payload = Util.hexToBinary(getMessage());
-		} else if (MESSAGE_TYPE_STRING.equals(getMessageType())) {
+		} else if(MESSAGE_TYPE_STRING.equals(getMessageType())) {
 			payload = getMessage();
 		} else if(MESSAGE_TYPE_RANDOM_STR_WITH_FIX_LEN.equals(getMessageType())) {
 			payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
@@ -320,6 +349,26 @@ public abstract class AbstractAblySampler extends AbstractSampler implements Con
 				default:
 					/* ignore */
 			}
+		}
+	}
+
+	protected static class SubResult implements CompletionListener {
+		private ErrorInfo error;
+
+		synchronized ErrorInfo waitForResult() throws InterruptedException {
+			wait();
+			return error;
+		}
+
+		@Override
+		public synchronized void onSuccess() {
+			notify();
+		}
+
+		@Override
+		public void onError(ErrorInfo reason) {
+			this.error = reason;
+			notify();
 		}
 	}
 }

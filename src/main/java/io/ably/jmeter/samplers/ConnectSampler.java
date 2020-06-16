@@ -30,7 +30,7 @@ public class ConnectSampler extends AbstractAblySampler {
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		client = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
-		if (client != null) {
+		if(client != null) {
 			result.sampleStart();
 			result.setSuccessful(false);
 			result.setResponseMessage(MessageFormat.format("Client {0} already exists.", client));
@@ -77,7 +77,7 @@ public class ConnectSampler extends AbstractAblySampler {
 			}
 		} catch (Exception e) {
 			logger.error("Failed to establish client " + client, e);
-			if (result.getEndTime() == 0) { result.sampleEnd(); } //avoid re-enter sampleEnd()
+			if(result.getEndTime() == 0) { result.sampleEnd(); } //avoid re-enter sampleEnd()
 			result.setSuccessful(false);
 			result.setResponseMessage(MessageFormat.format("Failed to establish client {0}.", client));
 			result.setResponseData(MessageFormat.format("Client [{0}] failed with exception.", opts.clientId).getBytes());

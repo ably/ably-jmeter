@@ -14,7 +14,7 @@ public class Util implements Constants {
 	public static String generateRandomSuffix(String prefix) {
 		int leng = prefix.length();
 		int postLeng = MAX_RANDOM_ID_LENGTH - leng - 1;
-		if (postLeng < 0) {
+		if(postLeng < 0) {
 			throw new IllegalArgumentException("ClientId prefix " + prefix + " is too long, max allowed is "
 					+ MAX_RANDOM_ID_LENGTH + " but was " + leng);
 		}

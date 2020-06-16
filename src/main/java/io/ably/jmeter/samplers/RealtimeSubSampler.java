@@ -8,7 +8,6 @@ import io.ably.jmeter.Util;
 import io.ably.lib.realtime.AblyRealtime;
 import io.ably.lib.realtime.Channel;
 import io.ably.lib.realtime.Channel.MessageListener;
-import io.ably.lib.realtime.CompletionListener;
 import io.ably.lib.types.AblyException;
 import io.ably.lib.types.ErrorInfo;
 import io.ably.lib.types.Message;
@@ -30,28 +29,8 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	private static final long serialVersionUID = 2979978053740194951L;
 	private static final Logger logger = LoggerFactory.getLogger(RealtimeSubSampler.class.getCanonicalName());
 
-	private static class SubResult implements CompletionListener {
-		private ErrorInfo error;
-
-		private synchronized ErrorInfo waitForResult() throws InterruptedException {
-			wait();
-			return error;
-		}
-
-		@Override
-		public synchronized void onSuccess() {
-			notify();
-		}
-
-		@Override
-		public void onError(ErrorInfo reason) {
-			this.error = reason;
-			notify();
-		}
-	}
-
-	private transient AblyRealtime connection = null;
-	private SubResult subResult;
+	private transient AblyRealtime client = null;
+	private transient SubResult subResult;
 
 	private int sampleElapsedTime = 1000;
 	private int sampleCount = 1;
@@ -61,34 +40,6 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 
 	private final transient Object dataLock = new Object();
 
-	public String getSampleCondition() {
-		return getPropertyAsString(Constants.SAMPLE_CONDITION, Constants.SAMPLE_ON_CONDITION_OPTION1);
-	}
-	public void setSampleCondition(String option) {
-		setProperty(Constants.SAMPLE_CONDITION, option);
-	}
-
-	public String getSampleCount() {
-		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_COUNT);
-	}
-	public void setSampleCount(String count) {
-		setProperty(Constants.SAMPLE_CONDITION_VALUE, count);
-	}
-
-	public String getSampleElapsedTime() {
-		return getPropertyAsString(Constants.SAMPLE_CONDITION_VALUE, Constants.DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC);
-	}
-	public void setSampleElapsedTime(String elapsedTime) {
-		setProperty(Constants.SAMPLE_CONDITION_VALUE, elapsedTime);
-	}
-
-	public boolean isDebugResponse() {
-		return getPropertyAsBoolean(Constants.DEBUG_RESPONSE, false);
-	}
-	public void setDebugResponse(boolean debugResponse) {
-		setProperty(Constants.DEBUG_RESPONSE, debugResponse);
-	}
-
 	@Override
 	public SampleResult sample(Entry arg0) {
 		logger.debug("sample");
@@ -96,15 +47,15 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
-		connection = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
-		if (connection == null) {
+		client = (AblyRealtime) vars.getObject(AbstractAblySampler.REALTIME_CLIENT);
+		if(client == null) {
 			return fillFailedResult(result, "500", "Subscribe failed because connection is not established.");
 		}
 
 		// initial values
 		boolean sampleByTime = Constants.SAMPLE_ON_CONDITION_OPTION1.equals(getSampleCondition());
 		try {
-			if (sampleByTime) {
+			if(sampleByTime) {
 				sampleElapsedTime = Integer.parseInt(getSampleElapsedTime());
 			} else {
 				sampleCount = Integer.parseInt(getSampleCount());
@@ -113,13 +64,17 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 			return fillFailedResult(result, "510", "Unrecognized value for sample elapsed time or message count.");
 		}
 
-		if (sampleByTime && sampleElapsedTime <=0 ) {
+		if(sampleByTime && sampleElapsedTime <=0 ) {
 			return fillFailedResult(result, "511", "Sample on elapsed time: must be greater than 0 ms.");
-		} else if (sampleCount < 1) {
+		} else if(sampleCount < 1) {
 			return fillFailedResult(result, "512", "Sample on message count: must be greater than 1.");
 		}
 
 		String channelName = getChannelPrefix();
+		if(subResult == null) {
+			subResult = new SubResult();
+		}
+
 		ErrorInfo subError = subscribe(channelName, sampleByTime, sampleCount);
 		if(subError != null) {
 			return fillFailedResult(result, String.valueOf(subError.statusCode), "Failed to subscribe to channel:" + channelName + "; error: " + subError.message);
@@ -165,7 +120,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		String message = MessageFormat.format("Received {0} of message.", receivedCount);
 		byte[] content = isDebugResponse() ? bean.mergeContents("\n".getBytes()) : new byte[0];
 		fillOKResult(result, bean.getReceivedMessageSize(), bean.getAvgElapsedTime(), message, content);
-		if (logger.isDebugEnabled()) {
+		if(logger.isDebugEnabled()) {
 			logger.debug("sub [channel]: " + channelName + ", [payload]: " + new String(content));
 		}
 
@@ -180,10 +135,7 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 	}
 
 	private ErrorInfo subscribe(final String channelName, final boolean sampleByTime, final int sampleCount) {
-		if(subResult == null) {
-			subResult = new SubResult();
-		}
-		final Channel channel = connection.channels.get(channelName);
+		final Channel channel = client.channels.get(channelName);
 		ErrorInfo subError;
 		try {
 			channel.attach(subResult);
@@ -271,8 +223,8 @@ public class RealtimeSubSampler extends AbstractAblySampler {
 		result.setResponseCode(code); // 5xx means various failures
 		result.setSuccessful(false);
 		result.setResponseMessage(message);
-		if (connection != null) {
-			result.setResponseData(MessageFormat.format("Client [{0}]: {1}", connection.options.clientId, message).getBytes());
+		if(client != null) {
+			result.setResponseData(MessageFormat.format("Client [{0}]: {1}", client.options.clientId, message).getBytes());
 		} else {
 			result.setResponseData(message.getBytes());
 		}

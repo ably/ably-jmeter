@@ -1,8 +1,6 @@
 package io.ably.jmeter.samplers;
 
 import io.ably.lib.realtime.AblyRealtime;
-import io.ably.lib.realtime.Channel;
-import io.ably.lib.types.AblyException;
 import io.ably.lib.types.ErrorInfo;
 import org.apache.jmeter.samplers.Entry;
 import org.apache.jmeter.samplers.SampleResult;
@@ -19,6 +17,7 @@ public class RealtimeSubSampler extends SubscribeSampler {
 	private static final Logger logger = LoggerFactory.getLogger(RealtimeSubSampler.class.getCanonicalName());
 
 	private transient AblyRealtime client = null;
+	private transient RealtimeSubscription subscription = null;
 
 	public RealtimeSubSampler() {
 		super(logger);
@@ -27,7 +26,7 @@ public class RealtimeSubSampler extends SubscribeSampler {
 	@Override
 	public SampleResult sample(Entry arg0) {
 		logger.debug("sample");
-		SampleResult result = new SampleResult();
+		final SampleResult result = new SampleResult();
 		result.setSampleLabel(getName());
 
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
@@ -36,57 +35,33 @@ public class RealtimeSubSampler extends SubscribeSampler {
 			return fillFailedResult(result, "Subscribe failed because connection is not established.", 500);
 		}
 
-		SubscriptionCondition subCondition = new SubscriptionCondition();
-		String validateErr = subCondition.validate();
+		final SubscriptionCondition subCondition = new SubscriptionCondition();
+		final String validateErr = subCondition.validate();
 		if(validateErr != null) {
 			return fillFailedResult(result, validateErr, 500);
 		}
 
-		String channelName = getChannelPrefix();
-		ErrorInfo subError = subscribe(channelName, subCondition);
+		final String channelName = getChannelPrefix();
+		subscription = new RealtimeSubscription(logger, subCondition, client, channelName);
+		final ErrorInfo subError = subscription.subscribe();
 		if(subError != null) {
 			return fillFailedResult(result, subError);
 		}
 
 		result.sampleStart();
-		subCondition.waitForCondition(logger);
+		subCondition.waitSampleTime();
+		subscription.waitForCount();
 		return produceResult(result, channelName);
 	}
 
-	private ErrorInfo subscribe(final String channelName, final SubscriptionCondition subCondition) {
-		final Channel channel = client.channels.get(channelName);
-		ErrorInfo subError;
-		try {
-			SubResult subResult = new SubResult();
-			channel.attach(subResult);
-			subError = subResult.waitForResult();
-		} catch (AblyException e) {
-			logger.info("attach failed", e);
-			subError = e.errorInfo;
-		} catch (InterruptedException e) {
-			logger.info("attach failed", e);
-			subError = new ErrorInfo(e.getMessage(), 50000, 500);
+	private void closeSubscription() {
+		if(subscription != null) {
+			subscription.unsubscribe();
 		}
-		if(subError == null) {
-			try {
-				channel.subscribe(message -> {
-					if(subCondition.sampleByTime) {
-						synchronized(subCondition) {
-							addMessageToBean(subCondition, message);
-						}
-					} else {
-						synchronized(subCondition) {
-							Bean bean = addMessageToBean(subCondition, message);
-							if(bean.getReceivedCount() == subCondition.sampleCount) {
-								subCondition.notify();
-							}
-						}
-					}
-				});
-			} catch (AblyException e) {
-				subError = e.errorInfo;
-			}
-		}
-		return subError;
+	}
+
+	@Override
+	public void threadFinished() {
+		closeSubscription();
 	}
 }

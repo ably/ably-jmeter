@@ -4,6 +4,9 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
+import io.ably.lib.realtime.AblyRealtime;
+import io.ably.lib.realtime.Channel;
+import io.ably.lib.types.AblyException;
 import io.ably.lib.types.ErrorInfo;
 import io.ably.lib.types.Message;
 import org.apache.jmeter.samplers.SampleResult;
@@ -166,28 +169,73 @@ public abstract class SubscribeSampler extends BaseSampler {
 			return null;
 		}
 
-		void waitForCondition(Logger logger) {
+		void waitSampleTime() {
 			if(sampleByTime) {
 				try {
 					TimeUnit.MILLISECONDS.sleep(sampleElapsedTime);
 				} catch (InterruptedException e) {
 					logger.info("Received exception when waiting for notification signal", e);
 				}
-			} else {
-				synchronized(this) {
-					int receivedCount1 = (batches.isEmpty() ? 0 : batches.element().getReceivedCount());;
-					boolean needWait = false;
-					if(receivedCount1 < sampleCount) {
-						needWait = true;
-					}
+			}
+		}
+	}
 
-					if(needWait) {
-						try {
-							wait();
-						} catch (InterruptedException e) {
-							logger.info("Received exception when waiting for notification signal", e);
+	class RealtimeSubscription {
+		private final Logger logger;
+		private final SubscriptionCondition subCondition;
+		private final Channel channel;
+		private int count;
+
+		RealtimeSubscription(Logger logger, SubscriptionCondition subCondition, AblyRealtime client, String channelName) {
+			this.logger = logger;
+			this.subCondition = subCondition;
+			channel = client.channels.get(channelName);
+		}
+
+		protected ErrorInfo subscribe() {
+			ErrorInfo subError;
+			try {
+				SubResult subResult = new SubResult();
+				channel.attach(subResult);
+				subError = subResult.waitForResult();
+			} catch (AblyException e) {
+				logger.info("attach failed", e);
+				subError = e.errorInfo;
+			} catch (InterruptedException e) {
+				logger.info("attach failed", e);
+				subError = new ErrorInfo(e.getMessage(), 50000, 500);
+			}
+			if(subError == null) {
+				try {
+					channel.subscribe(message -> {
+						synchronized(this) {
+							addMessageToBean(subCondition, message);
+							if(!subCondition.sampleByTime) {
+								if(++count >= subCondition.sampleCount) {
+									notify();
+								}
+							}
 						}
-					}
+					});
+				} catch (AblyException e) {
+					subError = e.errorInfo;
+				}
+			}
+			return subError;
+		}
+
+		protected void unsubscribe() {
+			try {
+				channel.detach();
+			} catch(AblyException ae) {}
+		}
+
+		protected synchronized void waitForCount() {
+			if(!subCondition.sampleByTime && count < subCondition.sampleCount) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+					logger.info("Received exception when waiting for notification signal", e);
 				}
 			}
 		}

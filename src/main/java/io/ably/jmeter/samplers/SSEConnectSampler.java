@@ -70,7 +70,7 @@ public class SSEConnectSampler extends SubscribeSampler {
 					.addQueryParameter("key", getApiKey())
 					.build();
 
-			handler = new SSESubscriptionHandler(subCondition, clientId);
+			handler = new SSESubscriptionHandler(subCondition);
 			client = new EventSource.Builder(handler, httpUrl).logger(new ConnectionLogger(logger)).build();
 
 			/* connect and wait for outcome */
@@ -90,7 +90,8 @@ public class SSEConnectSampler extends SubscribeSampler {
 		}
 
 		/* wait for subscription sample conditions to be met */
-		subCondition.waitForCondition(logger);
+		subCondition.waitSampleTime();
+		handler.waitForCount();
 		return produceResult(result, channel);
 	}
 
@@ -134,13 +135,12 @@ public class SSEConnectSampler extends SubscribeSampler {
 
 	class SSESubscriptionHandler implements EventHandler, ConnectionErrorHandler {
 		final SubscriptionCondition subCondition;
-		final String clientId;
 		private Throwable connectionError;
 		private boolean hasOutcome;
+		private int count;
 
-		SSESubscriptionHandler(SubscriptionCondition subCondition, String clientId) {
+		SSESubscriptionHandler(SubscriptionCondition subCondition) {
 			this.subCondition = subCondition;
-			this.clientId = clientId;
 		}
 
 		private synchronized void setOutcome(Throwable connectionError) {
@@ -156,6 +156,16 @@ public class SSEConnectSampler extends SubscribeSampler {
 				wait();
 			}
 			return connectionError;
+		}
+
+		protected synchronized void waitForCount() {
+			if(!subCondition.sampleByTime && count < subCondition.sampleCount) {
+				try {
+					wait();
+				} catch (InterruptedException e) {
+					logger.info("Received exception when waiting for notification signal", e);
+				}
+			}
 		}
 
 		@Override
@@ -176,18 +186,12 @@ public class SSEConnectSampler extends SubscribeSampler {
 		}
 
 		@Override
-		public void onMessage(String event, MessageEvent messageEvent) throws Exception {
+		public synchronized void onMessage(String event, MessageEvent messageEvent) throws Exception {
 			final Message msg = Serialisation.gson.fromJson(messageEvent.getData(), Message.class);
-			if(subCondition.sampleByTime) {
-				synchronized(subCondition) {
-					addMessageToBean(subCondition, msg);
-				}
-			} else {
-				synchronized(subCondition) {
-					Bean bean = addMessageToBean(subCondition, msg);
-					if(bean.getReceivedCount() == subCondition.sampleCount) {
-						subCondition.notify();
-					}
+			addMessageToBean(subCondition, msg);
+			if(!subCondition.sampleByTime) {
+				if(++count >= subCondition.sampleCount) {
+					notify();
 				}
 			}
 		}

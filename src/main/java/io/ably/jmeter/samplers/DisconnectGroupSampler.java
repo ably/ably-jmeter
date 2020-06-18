@@ -17,6 +17,10 @@ public class DisconnectGroupSampler extends BaseSampler {
 
 	private transient AblyRealtime[] clients = null;
 
+	public DisconnectGroupSampler() {
+		super(logger);
+	}
+
 	@Override
 	public SampleResult sample(Entry entry) {
 		logger.debug("sample");
@@ -26,13 +30,7 @@ public class DisconnectGroupSampler extends BaseSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		clients = (AblyRealtime[]) vars.getObject(BaseSampler.REALTIME_CLIENT_GROUP);
 		if(clients == null) {
-			result.sampleStart();
-			result.setSuccessful(false);
-			result.setResponseMessage("Connection not found.");
-			result.setResponseData("Failed. Connection not found.".getBytes());
-			result.setResponseCode("500");
-			result.sampleEnd(); // avoid endtime=0 exposed in trace log
-			return result;
+			return fillFailedResult(result, "Connection not found", 500);
 		}
 
 		try {
@@ -40,21 +38,11 @@ public class DisconnectGroupSampler extends BaseSampler {
 
 			result.sampleStart();
 			closeAllClients(logger, clients);
-			result.sampleEnd();
 			vars.remove(BaseSampler.REALTIME_CLIENT_GROUP); // clean up thread local var as well
-
-			result.setSuccessful(true);
-			result.setResponseData("Successful.".getBytes());
-			result.setResponseMessage("Connection disconnected.");
-			result.setResponseCodeOK();
+			return fillOKResult(result);
 		} catch (Exception e) {
 			logger.error("Failed to disconnect client", e);
-			if(result.getEndTime() == 0) result.sampleEnd(); //avoid re-enter sampleEnd()
-			result.setSuccessful(false);
-			result.setResponseMessage("Failed to disconnect client.");
-			result.setResponseData("Couldn't disconnect client.".getBytes());
-			result.setResponseCode("501");
+			return fillFailedResult(result, "Failed to disconnect client" + e.getMessage(), 500);
 		}
-		return result;
 	}
 }

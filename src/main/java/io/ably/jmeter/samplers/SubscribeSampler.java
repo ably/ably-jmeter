@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
+import io.ably.lib.types.ErrorInfo;
 import io.ably.lib.types.Message;
 import org.apache.jmeter.samplers.SampleResult;
 import org.slf4j.Logger;
@@ -15,13 +16,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 public abstract class SubscribeSampler extends BaseSampler {
-	private final Logger logger;
-
 	protected transient ConcurrentLinkedQueue<Bean> batches = new ConcurrentLinkedQueue<>();
 	private boolean printFlag = false;
 
 	protected SubscribeSampler(Logger logger) {
-		this.logger = logger;
+		super(logger);
 	}
 
 	protected SampleResult produceResult(SampleResult result, String channelName) {
@@ -89,35 +88,6 @@ public abstract class SubscribeSampler extends BaseSampler {
 		bean.setReceivedMessageSize(bean.getReceivedMessageSize() + Util.payloadLength(msg.data));
 		bean.setReceivedCount(bean.getReceivedCount() + 1);
 		return bean;
-	}
-
-	protected SampleResult fillFailedResult(SampleResult result, String code, String message) {
-		result.sampleStart();
-		result.setResponseCode(code); // 5xx means various failures
-		result.setSuccessful(false);
-		result.setResponseMessage(message);
-		result.setResponseData(message.getBytes());
-		result.sampleEnd();
-
-		// avoid massive repeated "early stage" failures in a short period of time
-		// which probably overloads JMeter CPU and distorts test metrics such as TPS, avg response time
-		try {
-			TimeUnit.MILLISECONDS.sleep(Constants.SUB_FAIL_PENALTY);
-		} catch (InterruptedException e) {
-			logger.info("Received exception when waiting for notification signal", e);
-		}
-		return result;
-	}
-
-	protected void fillOKResult(SampleResult result, int size, double latency, String message, byte[] contents) {
-		result.setResponseCode("200");
-		result.setSuccessful(true);
-		result.setResponseMessage(message);
-		result.setBodySize((long)size);
-		result.setBytes((long)size);
-		result.setLatency((long)latency);
-		result.setResponseData(contents);
-		result.sampleEnd();
 	}
 
 	static class Bean {

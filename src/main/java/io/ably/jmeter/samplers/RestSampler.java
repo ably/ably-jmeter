@@ -18,6 +18,10 @@ public class RestSampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(RestSampler.class.getCanonicalName());
 
+	public RestSampler() {
+		super(logger);
+	}
+
 	@Override
 	public SampleResult sample(Entry entry) {
 		logger.debug("sample");
@@ -27,13 +31,7 @@ public class RestSampler extends BaseSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRest client = (AblyRest) vars.getObject(BaseSampler.REST_CLIENT);
 		if(client != null) {
-			result.sampleStart();
-			result.setSuccessful(false);
-			result.setResponseMessage(MessageFormat.format("Client {0} already exists.", client));
-			result.setResponseData("Failed. Client already exists.".getBytes());
-			result.setResponseCode("500");
-			result.sampleEnd(); // avoid endtime=0 exposed in trace log
-			return result;
+			return fillFailedResult(result, "Client already exists", 500);
 		}
 
 		ClientOptions opts = getClientOptions(logger);
@@ -41,17 +39,10 @@ public class RestSampler extends BaseSampler {
 		try {
 			client = new AblyRest(opts);
 			vars.putObject(BaseSampler.REST_CLIENT, client); // save connection object as thread local variable !!
-			result.setSuccessful(true);
-			result.setResponseData("Successful.".getBytes());
-			result.setResponseCodeOK();
+			return fillOKResult(result);
 		} catch (Exception e) {
-			logger.error("Failed to establish client " + client, e);
-			result.setSuccessful(false);
-			result.setResponseData("Failed to establish client. Please check configuration.".getBytes());
-			result.setResponseCode("502");
-		} finally {
-			result.sampleEnd();
-			return result;
+			logger.error("Failed to disconnect client", e);
+			return fillFailedResult(result, "Failed to disconnect client" + e.getMessage(), 500);
 		}
 	}
 }

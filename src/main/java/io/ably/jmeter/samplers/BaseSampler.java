@@ -1,7 +1,8 @@
 package io.ably.jmeter.samplers;
 
 import com.google.gson.JsonPrimitive;
-import com.launchdarkly.eventsource.*;
+import com.launchdarkly.eventsource.EventSource;
+import com.launchdarkly.eventsource.ReadyState;
 import io.ably.jmeter.AblyLog;
 import io.ably.jmeter.Constants;
 import io.ably.jmeter.Util;
@@ -15,16 +16,24 @@ import io.ably.lib.types.Message;
 import io.ably.lib.util.JsonUtils;
 import io.ably.lib.util.Log;
 import org.apache.jmeter.samplers.AbstractSampler;
+import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.testelement.ThreadListener;
 import org.slf4j.Logger;
 
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 /**
  * A base model for properties used by multiple samplers
  */
 public abstract class BaseSampler extends AbstractSampler implements Constants, ThreadListener {
 	private static final long serialVersionUID = 7163793218595455807L;
+
+	protected final Logger logger;
+
+	protected BaseSampler(Logger logger) {
+		this.logger = logger;
+	}
 
 	public String getEnvironment() {
 		return getPropertyAsString(ENVIRONMENT, DEFAULT_ENVIRONMENT);
@@ -106,8 +115,8 @@ public abstract class BaseSampler extends AbstractSampler implements Constants, 
 		setProperty(MESSAGE_TYPE, messageType);
 	}
 
-	public String getMessageLength() {
-		return getPropertyAsString(MESSAGE_FIX_LENGTH, DEFAULT_MESSAGE_FIX_LENGTH);
+	public int getMessageLength() {
+		return getPropertyAsInt(MESSAGE_FIX_LENGTH, DEFAULT_MESSAGE_FIX_LENGTH);
 	}
 	public void setMessageLength(String length) {
 		setProperty(MESSAGE_FIX_LENGTH, length);
@@ -312,7 +321,7 @@ public abstract class BaseSampler extends AbstractSampler implements Constants, 
 		} else if(MESSAGE_TYPE_STRING.equals(getMessageType())) {
 			payload = getMessage();
 		} else if(MESSAGE_TYPE_RANDOM_STR_WITH_FIX_LEN.equals(getMessageType())) {
-			payload = Util.generatePayload(Integer.parseInt(getMessageLength()));
+			payload = Util.generatePayload(getMessageLength());
 		}
 		return payload;
 	}
@@ -330,6 +339,64 @@ public abstract class BaseSampler extends AbstractSampler implements Constants, 
 					.toJson();
 		}
 		return msg;
+	}
+
+	protected SampleResult fillFailedResult(SampleResult result, ErrorInfo error) {
+		return fillFailedResult(result, error.message, error.statusCode);
+	}
+
+	protected SampleResult fillFailedResult(SampleResult result, String message, int statusCode) {
+		if(result.getStartTime() == 0) {
+			result.sampleStart();
+		}
+		result.setResponseCode(String.valueOf(statusCode));
+		result.setSuccessful(false);
+		result.setResponseMessage(message);
+		result.setResponseData(message.getBytes());
+		if(result.getEndTime() == 0) {
+			result.sampleEnd();
+		}
+		if(result.getLatency() == 0) {
+			result.setLatency(result.getEndTime() - result.getStartTime());
+		}
+
+		// avoid massive repeated "early stage" failures in a short period of time
+		// which probably overloads JMeter CPU and distorts test metrics such as TPS, avg response time
+		try {
+			TimeUnit.MILLISECONDS.sleep(Constants.SUB_FAIL_PENALTY);
+		} catch (InterruptedException e) {
+			logger.info("Received exception when waiting for notification signal", e);
+		}
+		return result;
+	}
+
+	protected SampleResult fillOKResult(SampleResult result) {
+		return fillOKResult(result, 0, 0, "Success", null);
+	}
+
+	protected SampleResult fillOKResult(SampleResult result, int size, double latency, String message, byte[] contents) {
+		if(result.getStartTime() == 0) {
+			result.sampleStart();
+		}
+		if(result.getEndTime() == 0) {
+			result.sampleEnd();
+		}
+		if(latency == 0) {
+			result.setLatency(result.getEndTime() - result.getStartTime());
+		} else {
+			result.setLatency((long)latency);
+		}
+		result.setResponseCode("200");
+		result.setSuccessful(true);
+		result.setBodySize((long)size);
+		result.setBytes((long)size);
+		if(message != null) {
+			result.setResponseMessage(message);
+		}
+		if(contents != null) {
+			result.setResponseData(contents);
+		}
+		return result;
 	}
 
 	@Override
@@ -381,7 +448,7 @@ public abstract class BaseSampler extends AbstractSampler implements Constants, 
 		}
 
 		@Override
-		public void onError(ErrorInfo reason) {
+		public synchronized void onError(ErrorInfo reason) {
 			this.error = reason;
 			notify();
 		}

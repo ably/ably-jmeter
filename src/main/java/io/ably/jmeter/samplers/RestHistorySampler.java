@@ -24,6 +24,10 @@ public class RestHistorySampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(RestHistorySampler.class.getCanonicalName());
 
+	public RestHistorySampler() {
+		super(logger);
+	}
+
 	@Override
 	public SampleResult sample(Entry entry) {
 		logger.debug("sample");
@@ -33,13 +37,7 @@ public class RestHistorySampler extends BaseSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRest client = (AblyRest) vars.getObject(BaseSampler.REST_CLIENT);
 		if(client == null) {
-			result.sampleStart();
-			result.setSuccessful(false);
-			result.setResponseMessage("History: client configuration not found.");
-			result.setResponseData("History failed because client configuration is not found.".getBytes());
-			result.setResponseCode("500");
-			result.sampleEnd(); // avoid endtime=0 exposed in trace log
-			return result;
+			return fillFailedResult(result, "Client not found", 500);
 		}
 
 		try {
@@ -61,24 +59,11 @@ public class RestHistorySampler extends BaseSampler {
 
 			result.sampleStart();
 			PaginatedResult<Message> history = client.channels.get(getChannelPrefix()).history(params.toArray(new Param[params.size()]));
-			result.sampleEnd();
-
-			result.setSuccessful(true);
-			String statsJson = writeJson(history.items());
-			result.setResponseData(statsJson, "UTF-8");
-			result.setResponseMessage("Success");
-			result.setResponseCodeOK();
+			byte[] historyJson = writeJson(history.items()).getBytes();
+			return fillOKResult(result, historyJson.length, 0, null, historyJson);
 		} catch (AblyException e) {
 			logger.error("Failed to get stats " + client , e);
-			result.setSuccessful(false);
-			result.setResponseMessage(MessageFormat.format("Failed to get stats {0}.", client));
-			result.setResponseData(MessageFormat.format("History [{0}] failed with exception.", client.options.clientId).getBytes());
-			result.setResponseCode(String.valueOf(e.errorInfo.statusCode));
-		} finally {
-			if(result.getEndTime() == 0) {
-				result.sampleEnd();
-			}
-			return result;
+			return fillFailedResult(result, e.errorInfo);
 		}
 	}
 

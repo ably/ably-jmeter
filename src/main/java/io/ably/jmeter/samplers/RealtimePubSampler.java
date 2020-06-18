@@ -22,6 +22,10 @@ public class RealtimePubSampler extends BaseSampler {
 	private static final long serialVersionUID = 4312341622759500786L;
 	private static final Logger logger = LoggerFactory.getLogger(RealtimePubSampler.class.getCanonicalName());
 
+	public RealtimePubSampler() {
+		super(logger);
+	}
+
 	private static class PubResult implements CompletionListener {
 		private ErrorInfo error;
 
@@ -54,13 +58,7 @@ public class RealtimePubSampler extends BaseSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRealtime client = (AblyRealtime) vars.getObject(BaseSampler.REALTIME_CLIENT);
 		if(client == null) {
-			result.sampleStart();
-			result.setSuccessful(false);
-			result.setResponseMessage("Publish: Connection not found.");
-			result.setResponseData("Publish failed because connection is not established.".getBytes());
-			result.setResponseCode("500");
-			result.sampleEnd(); // avoid endtime=0 exposed in trace log
-			return result;
+			return fillFailedResult(result, "Connection not found", 500);
 		}
 
 		String clientId = client.options.clientId;
@@ -78,39 +76,21 @@ public class RealtimePubSampler extends BaseSampler {
 			result.sampleStart();
 			client.channels.get(channelName).publish(msg, pubOutcome);
 			ErrorInfo error = pubOutcome.waitForResult();
-			result.sampleEnd();
 
 			result.setSamplerData(Util.displayPayload(payload));
 			result.setSentBytes(Util.payloadLength(payload));
-			result.setLatency(result.getEndTime() - result.getStartTime());
 
 			if(error == null) {
-				result.setSuccessful(true);
-				result.setResponseData("Publish successfully.".getBytes());
-				result.setResponseMessage(MessageFormat.format("publish successfully for Connection {0}.", client));
-				result.setResponseCodeOK();
+				return fillOKResult(result);
 			} else {
-				result.setSuccessful(false);
-				result.setResponseMessage(MessageFormat.format("Publish failed for connection {0}.", client));
-				result.setResponseData(MessageFormat.format("Client [{0}] publish failed: {1}", (clientId == null ? "null" : clientId), error.message).getBytes());
-				result.setResponseCode(String.valueOf(error.statusCode));
 				logger.info(MessageFormat.format("** [clientId: {0}, channel: {1}, payload: {2}] Publish failed for connection {3}.", (clientId == null ? "null" : clientId),
 						channelName, Util.displayPayload(payload), client));
+				return fillFailedResult(result, error);
 			}
 
-		} catch (Exception ex) {
-			logger.error("Publish failed for connection " + client, ex);
-			if(result.getEndTime() == 0) result.sampleEnd();
-			result.setLatency(result.getEndTime() - result.getStartTime());
-			result.setSuccessful(false);
-			result.setResponseMessage(MessageFormat.format("Publish failed for connection {0}.", client));
-			result.setResponseData(MessageFormat.format("Client [{0}] publish failed: {1}", (clientId == null ? "null" : clientId), ex.getMessage()).getBytes());
-			result.setResponseCode("502");
-			if(logger.isWarnEnabled()) {
-				logger.warn(MessageFormat.format("** [clientId: {0}, channel: {1}, payload: {2}] Publish failed for connection {3}.", (clientId == null ? "null" : clientId),
-						channelName, Util.displayPayload(payload), client));
-			}
+		} catch (Exception e) {
+			logger.error("Publish failed for connection " + client, e);
+			return fillFailedResult(result, "Publish failed for connection" + e.getMessage(), 500);
 		}
-		return result;
 	}
 }

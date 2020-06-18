@@ -4,6 +4,7 @@ import com.launchdarkly.eventsource.ConnectionErrorHandler;
 import com.launchdarkly.eventsource.EventHandler;
 import com.launchdarkly.eventsource.EventSource;
 import com.launchdarkly.eventsource.MessageEvent;
+import io.ably.lib.types.ErrorInfo;
 import io.ably.lib.types.Message;
 import io.ably.lib.util.Serialisation;
 import okhttp3.HttpUrl;
@@ -38,13 +39,13 @@ public class SSEConnectSampler extends SubscribeSampler {
 		final JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		client = (EventSource) vars.getObject(BaseSampler.SSE_CLIENT);
 		if(client != null) {
-			return fillFailedResult(result, "500", "Subscribe failed because connection is not established.");
+			return fillFailedResult(result, new ErrorInfo("Subscribe failed because connection is not established.", 500, 50000));
 		}
 
 		final SubscriptionCondition subCondition = new SubscriptionCondition();
 		final String validateErr = subCondition.validate();
 		if(validateErr != null) {
-			return fillFailedResult(result, "500", validateErr);
+			return fillFailedResult(result, new ErrorInfo(validateErr, 500, 50000));
 		}
 
 		final String clientId = getClientId();
@@ -78,14 +79,14 @@ public class SSEConnectSampler extends SubscribeSampler {
 			final Throwable error = handler.waitForOutcome();
 
 			if(error != null) {
-				return fillFailedResult(result, "500", "Connect failed; exception: " + error.getMessage());
+				return fillFailedResult(result, new ErrorInfo("Connect failed; exception: " + error.getMessage(), 500, 50000));
 			}
 
 			vars.putObject(BaseSampler.SSE_CLIENT, client);
 			vars.putObject(BaseSampler.SSE_CLIENT_HANDLER, handler);
 		} catch (Exception e) {
 			logger.error("Failed to establish client " + client, e);
-			return fillFailedResult(result, "500", "Subscribe failed; exception: " + e.getMessage());
+			return fillFailedResult(result, new ErrorInfo("Subscribe failed; exception: " + e.getMessage(), 500, 50000));
 		}
 
 		/* wait for subscription sample conditions to be met */

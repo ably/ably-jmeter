@@ -13,14 +13,18 @@ import org.slf4j.LoggerFactory;
 import java.text.MessageFormat;
 
 /**
- * A sampler that establishes an Ably realtime connection and stores the
- * client instance in thread scope
+ * A sampler that establishes a group of Ably realtime connections and stores the
+ * client instances in thread scope
  */
 public class ConnectGroupSampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(ConnectGroupSampler.class.getCanonicalName());
 
 	private AblyRealtime[] clients;
+
+	public ConnectGroupSampler() {
+		super(logger);
+	}
 
 	@Override
 	public SampleResult sample(Entry entry) {
@@ -31,13 +35,7 @@ public class ConnectGroupSampler extends BaseSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		clients = (AblyRealtime[]) vars.getObject(BaseSampler.REALTIME_CLIENT_GROUP);
 		if(clients != null) {
-			result.sampleStart();
-			result.setSuccessful(false);
-			result.setResponseMessage("Clients already exist.");
-			result.setResponseData("Failed. Clients already exist.".getBytes());
-			result.setResponseCode("500");
-			result.sampleEnd(); // avoid endtime=0 exposed in trace log
-			return result;
+			return fillFailedResult(result, "Clients already exist", 500);
 		}
 
 		int clientCount = getGroupSize();
@@ -52,11 +50,7 @@ public class ConnectGroupSampler extends BaseSampler {
 			vars.putObject(BaseSampler.CLIENT_ID_GROUP, clientIds);
 		} catch (Exception e) {
 			logger.error("Failed to establish client", e);
-			result.setSuccessful(false);
-			result.setResponseMessage("Failed to establish client. Please check connection configuration.");
-			result.setResponseData("Failed to establish client. Please check connection configuration.".getBytes());
-			result.setResponseCode("502");
-			return result;
+			return fillFailedResult(result, "Failed to establish client" + e.getMessage(), 500);
 		}
 
 		try {
@@ -76,33 +70,20 @@ public class ConnectGroupSampler extends BaseSampler {
 					break;
 				}
 			}
-			result.sampleEnd();
 
 			if(firstError == null) {
 				vars.putObject(BaseSampler.REALTIME_CLIENT_GROUP, clients); // save connection object as thread local variable !!
-				result.setSuccessful(true);
-				result.setResponseData("Successful.".getBytes());
-				result.setResponseMessage("Connections established.");
-				result.setResponseCodeOK();
+				return fillOKResult(result);
 			} else {
 				/* one connection failed, so abort the whole group */
 				logger.error("Failed to connect; closing all connections", firstError);
 				closeAllClients(logger, clients);
-
-				result.setSuccessful(false);
-				result.setResponseMessage(MessageFormat.format("Failed to establish client {0}.", firstError.message));
-				result.setResponseData("Client failed. Couldn't establish connection.".getBytes());
-				result.setResponseCode(String.valueOf(firstError.statusCode));
+				return fillFailedResult(result, firstError);
 			}
 		} catch (Exception e) {
 			logger.error("Failed to establish client", e);
-			if(result.getEndTime() == 0) { result.sampleEnd(); } //avoid re-enter sampleEnd()
-			result.setSuccessful(false);
-			result.setResponseMessage("Failed to establish client.");
-			result.setResponseData("Client failed with exception.".getBytes());
-			result.setResponseCode("502");
+			return fillFailedResult(result, "Failed to establish client" + e.getMessage(), 500);
 		}
-		return result;
 	}
 
 	@Override

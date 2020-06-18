@@ -24,6 +24,10 @@ public class RestStatsSampler extends BaseSampler {
 	private static final long serialVersionUID = 1859006013465470528L;
 	private static final Logger logger = LoggerFactory.getLogger(RestStatsSampler.class.getCanonicalName());
 
+	public RestStatsSampler() {
+		super(logger);
+	}
+
 	@Override
 	public SampleResult sample(Entry entry) {
 		logger.debug("sample");
@@ -33,13 +37,7 @@ public class RestStatsSampler extends BaseSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		AblyRest client = (AblyRest) vars.getObject(BaseSampler.REST_CLIENT);
 		if(client == null) {
-			result.sampleStart();
-			result.setSuccessful(false);
-			result.setResponseMessage("Stats: client configuration not found.");
-			result.setResponseData("Stats failed because client configuration is not found.".getBytes());
-			result.setResponseCode("500");
-			result.sampleEnd(); // avoid endtime=0 exposed in trace log
-			return result;
+			return fillFailedResult(result, "Client not found", 500);
 		}
 
 		try {
@@ -63,24 +61,11 @@ public class RestStatsSampler extends BaseSampler {
 
 			result.sampleStart();
 			PaginatedResult<Stats> statsResult = client.stats(params.toArray(new Param[params.size()]));
-			result.sampleEnd();
-
-			result.setSuccessful(true);
-			String statsJson = writeJson(statsResult.items());
-			result.setResponseData(statsJson, "UTF-8");
-			result.setResponseMessage("Success");
-			result.setResponseCodeOK();
+			byte[] statsJson = writeJson(statsResult.items()).getBytes();
+			return fillOKResult(result, statsJson.length, 0, null, statsJson);
 		} catch (AblyException e) {
-			logger.error("Failed to get stats " + client , e);
-			result.setSuccessful(false);
-			result.setResponseMessage(MessageFormat.format("Failed to get stats {0}.", client));
-			result.setResponseData(MessageFormat.format("Stats [{0}] failed with exception.", client.options.clientId).getBytes());
-			result.setResponseCode(String.valueOf(e.errorInfo.statusCode));
-		} finally {
-			if(result.getEndTime() == 0) {
-				result.sampleEnd();
-			}
-			return result;
+			logger.error("Failed to make stats request", e);
+			return fillFailedResult(result, e.errorInfo);
 		}
 	}
 

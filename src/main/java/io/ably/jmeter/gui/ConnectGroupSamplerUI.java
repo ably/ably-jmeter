@@ -28,6 +28,7 @@ public class ConnectGroupSamplerUI extends AbstractSamplerGui implements Constan
 		JPanel mainPanel = new VerticalPanel();
 		add(mainPanel, BorderLayout.CENTER);
 
+		mainPanel.add(uiElements.createGroupSize());
 		mainPanel.add(uiElements.createConnPanel());
 		mainPanel.add(uiElements.createAuthentication());
 		mainPanel.add(uiElements.createClientOptions());
@@ -38,6 +39,7 @@ public class ConnectGroupSamplerUI extends AbstractSamplerGui implements Constan
 	public void configure(TestElement element) {
 		super.configure(element);
 		ConnectGroupSampler sampler = (ConnectGroupSampler)element;
+		uiElements.configureGroup(sampler);
 		uiElements.configureClient(sampler);
 	}
 
@@ -45,6 +47,7 @@ public class ConnectGroupSamplerUI extends AbstractSamplerGui implements Constan
 	public TestElement createTestElement() {
 		ConnectGroupSampler sampler = new ConnectGroupSampler();
 		this.configureTestElement(sampler);
+		uiElements.setupSamplerGroupProperties(sampler);
 		uiElements.setupSamplerClientProperties(sampler);
 		return sampler;
 	}
@@ -63,12 +66,14 @@ public class ConnectGroupSamplerUI extends AbstractSamplerGui implements Constan
 	public void modifyTestElement(TestElement arg0) {
 		ConnectGroupSampler sampler = (ConnectGroupSampler)arg0;
 		this.configureTestElement(sampler);
+		uiElements.setupSamplerGroupProperties(sampler);
 		uiElements.setupSamplerClientProperties(sampler);
 	}
 
 	@Override
 	public void clearGui() {
 		super.clearGui();
+		uiElements.clearGroupUI();
 		uiElements.clearClientUI();
 	}
 

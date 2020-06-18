@@ -34,6 +34,8 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 	private JCheckBox clientIdSuffix = new JCheckBox("Add random suffix for clientId");
 	private JLabeledChoice logLevel = new JLabeledChoice("Log level", AblyLog.levelNames);
 
+	private final JLabeledTextField groupSize = new JLabeledTextField("Group size");
+
 	final JLabeledTextField channelNamePrefix = new JLabeledTextField("Channel name:");
 	private JCheckBox channelNameSuffix = new JCheckBox("Add random suffix for channel name");
 
@@ -92,6 +94,17 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 
 		JPanel optsPanel = new HorizontalPanel();
 		optsPanel.add(apiKey);
+		optsPanelCon.add(optsPanel);
+
+		return optsPanelCon;
+	}
+
+	public JPanel createGroupSize() {
+		JPanel optsPanelCon = new VerticalPanel();
+		optsPanelCon.setBorder(BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Group"));
+
+		JPanel optsPanel = new HorizontalPanel();
+		optsPanel.add(groupSize);
 		optsPanelCon.add(optsPanel);
 
 		return optsPanelCon;
@@ -219,6 +232,10 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		logLevel.setSelectedIndex(sampler.getLogLevelIndex());
 	}
 
+	public void configureGroup(BaseSampler sampler) {
+		groupSize.setText(String.valueOf(sampler.getGroupSize()));
+	}
+
 	public void configurePublisher(BaseSampler sampler) {
 		channelNamePrefix.setText(sampler.getChannelPrefix());
 		if(sampler.isChannelNameSuffix()) {
@@ -267,6 +284,15 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		sampler.setLogLevelIndex(logLevel.getSelectedIndex());
 	}
 
+	public void setupSamplerGroupProperties(BaseSampler sampler) {
+		try {
+			sampler.setGroupSize(Integer.parseInt(groupSize.getText()));
+		} catch(NumberFormatException nfe) {
+			showModalError(groupSize, nfe.getMessage());
+			groupSize.setText(String.valueOf(DEFAULT_GROUP_SIZE));
+		}
+	}
+
 	public void setupSamplerPublishProperties(BaseSampler sampler) {
 		sampler.setChannelPrefix(channelNamePrefix.getText());
 		sampler.setChannelNameSuffix(channelNameSuffix.isSelected());
@@ -288,10 +314,17 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		sampler.setDebugResponse(debugResponse.isSelected());
 		sampler.setSampleCondition(sampleOnCondition.getText());
 
-		if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
-			sampler.setSampleElapsedTime(Integer.parseInt(sampleConditionValue.getText()));
-		} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
-			sampler.setSampleCount(Integer.parseInt(sampleConditionValue.getText()));
+
+		try {
+			if(SAMPLE_ON_CONDITION_OPTION1.equalsIgnoreCase(sampleOnCondition.getText())) {
+				sampler.setSampleElapsedTime(Integer.parseInt(sampleConditionValue.getText()));
+			} else if(SAMPLE_ON_CONDITION_OPTION2.equalsIgnoreCase(sampleOnCondition.getText())) {
+				sampler.setSampleCount(Integer.parseInt(sampleConditionValue.getText()));
+			}
+		} catch(NumberFormatException nfe) {
+			showModalError(sampleConditionValue, nfe.getMessage());
+			sampleOnCondition.setText(SAMPLE_ON_CONDITION_OPTION1);
+			sampleConditionValue.setText(String.valueOf(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC));
 		}
 	}
 
@@ -303,6 +336,10 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		logLevel.setSelectedIndex(DEFAULT_LOG_LEVEL);
 	}
 
+	public void clearGroupUI() {
+		groupSize.setText(String.valueOf(DEFAULT_GROUP_SIZE));
+	}
+
 	public void clearPublishUI() {
 		channelNamePrefix.setText(DEFAULT_CHANNEL_NAME_PREFIX);
 		channelNameSuffix.setSelected(false);
@@ -310,7 +347,7 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		encoding.setText(DEFAULT_ENCODING);
 		timestamp.setSelected(false);
 		messageTypes.setSelectedIndex(0);
-		stringLength.setText(DEFAULT_MESSAGE_FIX_LENGTH);
+		stringLength.setText(String.valueOf(DEFAULT_MESSAGE_FIX_LENGTH));
 		sendMessage.setText("");
 	}
 
@@ -324,5 +361,26 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		debugResponse.setSelected(false);
 		sampleOnCondition.setText(SAMPLE_ON_CONDITION_OPTION1);
 		sampleConditionValue.setText(String.valueOf(DEFAULT_SAMPLE_VALUE_ELAPSED_TIME_MILLI_SEC));
+	}
+
+	private void showModalError(JLabeledTextField component, String exceptionMessage) {
+		JFrame frame = (JFrame)component.getTopLevelAncestor();
+		final JDialog modelDialog = new JDialog(frame, "Error validating " + component.getLabel(),
+				Dialog.ModalityType.DOCUMENT_MODAL);
+		Container dialogContainer = modelDialog.getContentPane();
+		dialogContainer.setLayout(new BorderLayout());
+		JLabel messageLabel = new JLabel(exceptionMessage);
+		messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
+		dialogContainer.add(messageLabel, BorderLayout.CENTER);
+		JPanel panel1 = new JPanel();
+		panel1.setLayout(new FlowLayout());
+		JButton okButton = new JButton("Ok");
+		okButton.addActionListener(e -> modelDialog.setVisible(false));
+
+		panel1.add(okButton);
+		dialogContainer.add(panel1, BorderLayout.SOUTH);
+		modelDialog.setBounds(0, 0, 300, 100);
+		modelDialog.setLocationRelativeTo(frame);
+		modelDialog.setVisible(true);
 	}
 }

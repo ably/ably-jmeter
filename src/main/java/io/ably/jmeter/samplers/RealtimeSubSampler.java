@@ -33,19 +33,19 @@ public class RealtimeSubSampler extends SubscribeSampler {
 		JMeterVariables vars = JMeterContextService.getContext().getVariables();
 		client = (AblyRealtime) vars.getObject(BaseSampler.REALTIME_CLIENT);
 		if(client == null) {
-			return fillFailedResult(result, "500", "Subscribe failed because connection is not established.");
+			return fillFailedResult(result, "Subscribe failed because connection is not established.", 500);
 		}
 
 		SubscriptionCondition subCondition = new SubscriptionCondition();
 		String validateErr = subCondition.validate();
 		if(validateErr != null) {
-			return fillFailedResult(result, "500", validateErr);
+			return fillFailedResult(result, validateErr, 500);
 		}
 
 		String channelName = getChannelPrefix();
 		ErrorInfo subError = subscribe(channelName, subCondition);
 		if(subError != null) {
-			return fillFailedResult(result, String.valueOf(subError.statusCode), "Failed to subscribe to channel:" + channelName + "; error: " + subError.message);
+			return fillFailedResult(result, subError);
 		}
 
 		result.sampleStart();

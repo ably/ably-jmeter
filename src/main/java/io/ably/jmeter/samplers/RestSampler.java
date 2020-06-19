@@ -9,8 +9,6 @@ import org.apache.jmeter.threads.JMeterVariables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.text.MessageFormat;
-
 /**
  * A sampler that publishes a single message to a given channel using the Ably REST client
  */

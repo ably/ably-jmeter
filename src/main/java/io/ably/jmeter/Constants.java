@@ -2,11 +2,14 @@ package io.ably.jmeter;
 
 public interface Constants {
 	String ENVIRONMENT = "ably.environment";
+	String APP_SPEC = "ably.app_spec";
 	String SSE_CLIENT = "ably.sse_client";
 	String SSE_CLIENT_HANDLER = "ably.sse_client_handler";
 	String REALTIME_CLIENT = "ably.realtime_client";
 	String REALTIME_CLIENT_GROUP = "ably.realtime_client_group";
 	String REST_CLIENT = "ably.rest_client";
+	String APP_ID = "ably.app_id";
+	String ACCOUNT_ID = "ably.account_id";
 	String API_KEY = "ably.api_key";
 	String CLIENT_ID = "ably.client_id";
 	String CLIENT_ID_GROUP = "ably.client_id_group";

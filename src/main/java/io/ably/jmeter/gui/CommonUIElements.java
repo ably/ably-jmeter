@@ -220,8 +220,12 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		}
 	}
 
-	public void configureClient(BaseSampler sampler) {
+	public void configureEnvironment(BaseSampler sampler) {
 		serverAddr.setText(sampler.getEnvironment());
+	}
+
+	public void configureClient(BaseSampler sampler) {
+		configureEnvironment(sampler);
 		apiKey.setText(sampler.getApiKey());
 		clientIdPrefix.setText(sampler.getClientIdPrefix());
 		if(sampler.isClientIdSuffix()) {
@@ -276,8 +280,12 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		}
 	}
 
-	public void setupSamplerClientProperties(BaseSampler sampler) {
+	public void setupSamplerEnvironmentProperties(BaseSampler sampler) {
 		sampler.setEnvironment(serverAddr.getText());
+	}
+
+	public void setupSamplerClientProperties(BaseSampler sampler) {
+		setupSamplerEnvironmentProperties(sampler);
 		sampler.setApiKey(apiKey.getText());
 		sampler.setClientIdPrefix(clientIdPrefix.getText());
 		sampler.setClientIdSuffix(clientIdSuffix.isSelected());
@@ -328,8 +336,12 @@ public class CommonUIElements implements ChangeListener, ActionListener, Constan
 		}
 	}
 
-	public void clearClientUI() {
+	public void clearEnvironmentUI() {
 		serverAddr.setText(DEFAULT_ENVIRONMENT);
+	}
+
+	public void clearClientUI() {
+		clearEnvironmentUI();
 		apiKey.setText(DEFAULT_API_KEY);
 		clientIdPrefix.setText(DEFAULT_CLIENTID);
 		clientIdSuffix.setSelected(true);

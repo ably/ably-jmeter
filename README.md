@@ -245,6 +245,8 @@ This sampler also adds properties that are visible to add threads:
 - `ably.account_id`: the id of the account associatad with the created app;
 - `ably.api_key`: the full API key string for the created root key.
 
+Note that, since these are set as properties instead of User Defined Variables, references to these values by other samplers must be as property references (eg as `${__P(ably.api_key)}`).
+
 ### Ably Delete Test App
 
 This closes a previously created Ably test app. This may be used within a teardown threadgroup of a test plan.
@@ -256,6 +258,26 @@ None.
 #### Variables
 
 None.
+
+## Example plans
+
+Illustrative plans are included in the `src/test/resources/plans` directory.
+
+## Release process
+
+This library uses [semantic versioning](http://semver.org/). For each release, the following needs to be done:
+
+1. Create a branch for the release, named like `release/0.0.2`
+2. Replace all references of the current version number with the new version number (check this file [README.md](./README.md) and [build.gradle](./build.gradle)) and commit the changes
+3. Run [`github_changelog_generator`](https://github.com/skywinder/Github-Changelog-Generator) to update the [CHANGELOG](./CHANGELOG.md).
+4. Commit [CHANGELOG](./CHANGELOG.md)
+5. Make a PR against `master`
+6. Once the PR is approved, merge it into `master`
+7. Add a tag and push to origin - e.g.: `git tag v0.0.2 && git push origin v0.0.2`
+
+### Creating the release on Github
+
+Visit [https://github.com/ably/ably-jmeter/tags](https://github.com/ably/ably-java/tags) and `Add release notes` for the release including links to the changelog entry.
 
 ## Support, feedback and troubleshooting
 

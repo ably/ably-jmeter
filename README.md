@@ -271,8 +271,8 @@ This library uses [semantic versioning](http://semver.org/). For each release, t
 2. Replace all references of the current version number with the new version number (check this file [README.md](./README.md) and [build.gradle](./build.gradle)) and commit the changes
 3. Run [`github_changelog_generator`](https://github.com/skywinder/Github-Changelog-Generator) to update the [CHANGELOG](./CHANGELOG.md).
 4. Commit [CHANGELOG](./CHANGELOG.md)
-5. Make a PR against `master`
-6. Once the PR is approved, merge it into `master`
+5. Make a PR against `main`
+6. Once the PR is approved, merge it into `main`
 7. Add a tag and push to origin - e.g.: `git tag v0.0.2 && git push origin v0.0.2`
 
 ### Creating the release on Github
